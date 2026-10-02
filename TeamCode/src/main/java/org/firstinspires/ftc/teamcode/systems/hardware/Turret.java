@@ -64,6 +64,47 @@ public class Turret implements Mechanism {
 
     private Mode currentMode = Mode.AIMING;
 
+    public enum Mode { AIMING, RECENTERING, TUNE_VELOCITY, TUNE_POSITION }
+
+    private double manualAngle = 0, manualVelocity = 0;
+
+    public void setMode(Mode m) { currentMode = m; }
+    public void setManualAngle(double deg) { manualAngle = deg; }
+    public void setManualVelocity(double dps) { manualVelocity = dps; }
+    public double getAngle() { return currentAngle; }
+
+    public void applyConstants() {
+        headingPID.setPIDF(constants.posKp, constants.posKi, constants.posKd, constants.posKf); // add this to your PIDFController
+        motor.getVelocityConstants().setKP(constants.velKp);
+        motor.getVelocityConstants().setKI(constants.velKi);
+        motor.getVelocityConstants().setKD(constants.velKd);
+        motor.getVelocityConstants().setKS(constants.velKs);
+        motor.getVelocityConstants().setKV(constants.velKv);
+        motor.getVelocityConstants().setKA(constants.velKa);
+    }
+
+    public void update() {
+        currentAngle = motor.getEncoderPosition().into(Degrees);
+        currentVelocity = motor.getEncoderVelocity().into(DegreesPerSecond);
+
+        switch (currentMode) {
+            case TUNE_VELOCITY:
+                motor.setVelocitySetpoint(DegreesPerSecond.of(manualVelocity));
+                break;
+
+            case TUNE_POSITION:
+                err = manualAngle - currentAngle;
+                double v = headingPID.calculate(err, -botAng);
+                v = Range.clip(v, -constants.MAX_VEL, constants.MAX_VEL);
+                motor.setVelocitySetpoint(DegreesPerSecond.of(v));
+                break;
+
+            default:
+                break;
+        }
+        motor.update();
+    }
+
     public Turret() {
         // motor = new NextMotor(constants.motorName, Degrees.of(360.0 / 28 / constants.GEAR_RATIO));
 
@@ -132,7 +173,6 @@ public class Turret implements Mechanism {
         editPositionCoefficients(coeff.p, coeff.i, coeff.d, coeff.f);
     }
 
-    public enum Mode { AIMING, RECENTERING }
 
     /**
      * Wraps {@code angle} into the turret's safe mechanical range around WRAP_CENTER

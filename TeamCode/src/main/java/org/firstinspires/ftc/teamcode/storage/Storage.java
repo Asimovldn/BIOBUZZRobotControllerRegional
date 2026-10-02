@@ -133,4 +133,24 @@ public class Storage {
     public enum Alliance {
         BLUE, RED
     };
+
+    /**
+     * If {@code ths} is equal to {@code equal} then turn into {@code then} else turn into {@code elseThen}
+     * @param ths this
+     * @param equal equal to this
+     * @param then become this
+     * @param elseThen else...
+     * @return then or elseThen
+     */
+    public static Object isEqualTo(Object ths, Object equal, Object then, Object elseThen) {
+        if (ths.equals(equal)) {
+            return then;
+        } else {
+            return elseThen;
+        }
+    }
+
+    public static Object isEqualTo(Object ths, Object equal, Object then) {
+        return isEqualTo(ths, equal, then, equal);
+    }
 }

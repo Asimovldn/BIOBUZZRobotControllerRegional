@@ -82,4 +82,8 @@ public class PIDFController {
         if (v < -max) return -max;
         return v;
     }
+
+    public void setPIDF(double posKp, double posKi, double posKd, double posKf) {
+        kP = posKp; kI = posKi; kD = posKd; kF = posKf;
+    }
 }

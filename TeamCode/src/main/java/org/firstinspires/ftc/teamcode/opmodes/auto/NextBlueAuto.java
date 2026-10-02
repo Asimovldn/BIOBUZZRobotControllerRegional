@@ -64,4 +64,9 @@ public class NextBlueAuto extends NextOpMode {
 
         Scheduler.execute();
     }
+
+    @Override
+    public void end() {
+        Storage.autonomousEnd = robot.getFollower().pose();
+    }
 }

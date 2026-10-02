@@ -24,7 +24,7 @@ public class WalkOnly extends NextOpMode {
 
     @Override
     public void periodic() {
-        double speedDamp = 0.9 - gamepad1.left_trigger;
+        double speedDamp = 1 - gamepad1.left_trigger;
         double turn = -gamepad1.right_stick_x;
 
         follower.manual(
