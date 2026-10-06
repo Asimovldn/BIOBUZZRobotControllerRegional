@@ -29,6 +29,7 @@ public class Bot implements NextRobot {
     public Bot() {
         constants = new Storage();
         shooter = new Shooter();
+        // turret = new Turret();
     };
 
     public Turret getTurret() {

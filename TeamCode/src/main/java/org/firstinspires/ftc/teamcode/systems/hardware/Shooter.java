@@ -14,7 +14,7 @@ public class Shooter implements Mechanism {
     private final Storage.ShooterConstants constants = new Storage.ShooterConstants();
 
     public Shooter() {
-        motor = new NextMotor("shooter", Degrees.of(360.0 / 28));
+        motor = new NextMotor("shooter");
 
         motor.getVelocityConstants().setKS(constants.kS);
         motor.getVelocityConstants().setKV(constants.kV);

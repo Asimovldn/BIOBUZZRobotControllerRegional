@@ -40,7 +40,7 @@ public class Turret implements Mechanism {
         Mesmo que o caminho mais curto entre 180 => 190 seja 10, ele vai escolher o -350 não bater o limite.
      */
 
-    private final NextLimelight limelight = new NextLimelight("limelight");
+    private final NextLimelight limelight;
     public double degs;
     private double lastWrappedTarget = 0;
     private Storage.Alliance alliance;
@@ -84,7 +84,7 @@ public class Turret implements Mechanism {
     }
 
     public void update() {
-        currentAngle = motor.getEncoderPosition().into(Degrees);
+        currentAngle = 0;
         currentVelocity = motor.getEncoderVelocity().into(DegreesPerSecond);
 
         switch (currentMode) {
@@ -93,10 +93,11 @@ public class Turret implements Mechanism {
                 break;
 
             case TUNE_POSITION:
-                err = manualAngle - currentAngle;
-                double v = headingPID.calculate(err, -botAng);
+                botAngularVelocity(0);
+                err = 0;
+                double v = headingPID.calculate(err, 0);
                 v = Range.clip(v, -constants.MAX_VEL, constants.MAX_VEL);
-                motor.setVelocitySetpoint(DegreesPerSecond.of(v));
+                motor.setVelocitySetpoint(DegreesPerSecond.of(0));
                 break;
 
             default:
@@ -106,14 +107,11 @@ public class Turret implements Mechanism {
     }
 
     public Turret() {
-        // motor = new NextMotor(constants.motorName, Degrees.of(360.0 / 28 / constants.GEAR_RATIO));
+        motor = new NextMotor(constants.motorName, Degrees.of(360.0 / 28.0));
+        limelight = new NextLimelight("Ethernet Device");
 
-        motor.getVelocityConstants().setKP(constants.velKp);
-        motor.getVelocityConstants().setKI(constants.velKi);
-        motor.getVelocityConstants().setKD(constants.velKd);
         motor.getVelocityConstants().setKS(constants.velKs);
-        motor.getVelocityConstants().setKV(constants.velKv);
-        motor.getVelocityConstants().setKA(constants.velKa);
+        motor.getVelocityConstants().setKV(constants.velKv / (360.0 / 28.0));
 
         headingPID.setIntegralClamp(constants.MAX_VEL);
 
@@ -240,7 +238,7 @@ public class Turret implements Mechanism {
      * @return
      */
     private double sidePriority(LLResult seen, int[] currTags, int sidePriorityTag) {
-        Set<Integer> rightSide = Set.of(currTags[3], currTags[4]);
+        Set<Integer> rightSide = Set.of(currTags[2], currTags[3]);
         Set<Integer> leftSide = Set.of(currTags[0], currTags[1]);
 
         int side = rightSide.contains(sidePriorityTag) ? 1 : -1;
@@ -284,7 +282,7 @@ public class Turret implements Mechanism {
             LLResult res = limelight.getLatestResult();
             boolean found = false;
 
-            int[] currTags = tags.get(alliance, currLocation);
+            int[] currTags = Storage.TagFamilies.get(alliance, "Scoring");
             int count = 0;
 
 
@@ -312,14 +310,15 @@ public class Turret implements Mechanism {
             if (!found || !res.isValid()) err = lastTx;
 
             calledPeriodic = true;
-            currentAngle = motor.getEncoderPosition().into(Degrees);
+            currentAngle = 0; // encoder do motor já convertido pra engrenagem da torreta
 
-            double desiredAngle = currentAngle + err;
-            double wrappedTarget = wrapToSafeRange(desiredAngle);
+            double desiredAngle = currentAngle + err; // adiciona o erro
+            double wrappedTarget = wrapToSafeRange(desiredAngle); // wrap pra ele não fazer +1 rotação e explodir cabo
+            // sucesso?
 
             double angleError = wrappedTarget - currentAngle;
 
-            double targetAngularVelocity = headingPID.calculate(angleError, -botAng);
+            double targetAngularVelocity = headingPID.calculate(angleError, -botAng) / 5;
             targetAngularVelocity = Range.clip(targetAngularVelocity, -constants.MAX_VEL, constants.MAX_VEL);
 
             motor.setVelocitySetpoint(DegreesPerSecond.of(targetAngularVelocity));

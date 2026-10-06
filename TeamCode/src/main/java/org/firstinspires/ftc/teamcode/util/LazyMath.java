@@ -1,6 +1,9 @@
 package org.firstinspires.ftc.teamcode.util;
 
+import static dev.nextftc.control.util.Interpolation.lerp;
+
 import com.pedropathing.math.Pose;
+import com.pedropathing.utils.Utils;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -9,6 +12,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
+import java.lang.reflect.Constructor;
 import java.util.Objects;
 
 public class LazyMath {
@@ -61,7 +65,15 @@ public class LazyMath {
         return angle;
     }
 
-    public static boolean compare(String a, String b) {
-        return Objects.equals(a, b);
+    /**
+     * Given the max/min KP, current/max ERR, estimate the best possible err.
+     */
+    public static double requiredKpValue(double maxKp, double minKp, double currErr, double maxErr) {
+        double minErr = -maxErr;
+        double tFactor = (currErr - minErr) / (maxErr - minErr);
+
+        return Utils.lerp(tFactor, minKp, maxKp);
     }
+
+    public static boolean compare(Object a, Object b) { return a.equals(b); }
 }

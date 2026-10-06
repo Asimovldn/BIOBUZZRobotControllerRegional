@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes.tests;
 
 import static dev.nextftc.units.Units.DegreesPerSecond;
+import static dev.nextftc.units.Units.DegreesPerSecondSquared;
 import static dev.nextftc.units.Units.RotationsPerMinute;
 
 import org.firstinspires.ftc.teamcode.systems.Bot;
@@ -19,7 +20,7 @@ public class ShootOnly extends NextOpMode {
     @Override
     public void periodic() {
         telemetry.addData("Current Gamepad: ", gamepad1.left_stick_y);
-        telemetry.addData("Current Velocity: ", robot.getShooter().Speed().into(RotationsPerMinute));
+        telemetry.addData("Current Velocity: ", robot.getShooter().Speed().into(RotationsPerMinute) / 3);
 
         // 12000deg/s (1666rpm) muito fraco
         // 25000deg/s bateu no TETO
@@ -35,7 +36,7 @@ public class ShootOnly extends NextOpMode {
         // UTILIZE THIS VALUE FOR PERFORMANCE.
 
 
-        robot.getShooter().setTargetVelocity(RotationsPerMinute.of(8380 * gamepad1.left_stick_y));
+        robot.getShooter().setThrottle(gamepad1.left_stick_y);
 
         telemetry.update();
     }

@@ -32,24 +32,24 @@ public class Storage {
 
     public static class TurretConstants {
         // Custom PIDF (not NextMotor control)
-        public double posKp = 0.02, posKi = 0.0005, posKd = 0.004;
+        public double posKp = 0.008, posKi = 0.0005, posKd = 0.004;
         public double posKf = 1.0; // multiplies -botAngularVelocity for disturbance cancellation
 
         // Inner velocity loop, handed directly to NextMotor built-in velocity controller
         public double velKp = 0.01, velKi = 0.002, velKd = 0.0;
-        public double velKs = 0.05, velKv = 0.004, velKa = 0.0;
+        public double velKs = 0.08, velKv = 0.00242, velKa = 0.0;
 
         public int MAX_ANGLE = 350;
         public int WRAP_CENTER = 0, WRAP_HYSTERESIS = 20;
         public int MOTOR_GEAR = 20, TURRET_GEAR = 40;
         public double GEAR_RATIO;
 
-        public String motorName = "turretMotor";
+        public String motorName = "turret";
 
         // em tese use angleTolerance = 2, mas pode chutar qualquer valor sei lá.
         public double angleTolerance = 7;
 
-        public double MAX_VEL = 15; // degrees/sec, turret-referenced
+        public double MAX_VEL = 12; // degrees/sec, turret-referenced
 
         public TurretConstants() {
             GEAR_RATIO = (double) TURRET_GEAR / MOTOR_GEAR;
