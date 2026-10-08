@@ -1,359 +1,299 @@
 package org.firstinspires.ftc.teamcode.systems.hardware;
 
+import static org.firstinspires.ftc.teamcode.util.LazyMath.compare;
 import static dev.nextftc.units.Units.Degrees;
-import static dev.nextftc.units.Units.DegreesPerSecond;
 
-import android.hardware.Sensor;
-
-import androidx.annotation.NonNull;
-
-import com.pedropathing.ivy.Command;
-import com.pedropathing.ivy.CommandBuilder;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.robotcore.hardware.DistanceSensor;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.storage.Storage;
-import org.firstinspires.ftc.teamcode.util.PIDFController;
+import org.firstinspires.ftc.teamcode.util.LazyMath;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
-import dev.nextftc.control.feedback.PIDCoefficients;
-import dev.nextftc.control.feedforward.SimpleFFCoefficients;
-import dev.nextftc.hardware.actuators.NextMotor;
-import dev.nextftc.hardware.sensors.NextDistanceSensor;
 import dev.nextftc.hardware.webcams.NextLimelight;
 import dev.nextftc.robot.Mechanism;
+import dev.nextftc.units.measuretypes.Angle;
 
+/**
+ * Turret driven by ONE servo in POSITIONAL mode.
+ * SLEW = limited speed.<br>
+ *<br>
+ * Because there is no feedback: power on with the turret at its CENTER (servo jumps to 0.5 at start).
+ *<br><br>
+ * Modes:<br>
+ *  OFF           ==> PWM disabled (servo limp).<br>
+ *  CALIBRATE     ==> servo parked at 0.5. Use it to mount the horn / gear so the turret points forward.<br>
+ *  MANUAL        ==> setManualVelocity(deg/s) moves the turret. Check the direction first.<br>
+ *  SEMI_AIM      ==> Limelight aim, any tag, NO wrapping (just limits). For testing.<br>
+ *  AIMING        ==> Limelight aim on goal tags, WITH wrapping into the safe range.<br>
+ *  RECENTERING   ==> go to the center.<br>
+ *  TUNE_POSITION ==> go to setManualAngle(deg).<br>
+ *  <br>
+ * Combine this with different OpModes for Turret Testing.<br>
+ * change modes with:<br>
+ * <pre>{@code
+ *  turret.setMode(Mode m);
+ * }
+ */
 public class Turret implements Mechanism {
 
-    /*
-        NÃO copiar as funcionalidades dessa Torreta para ângulos que não sejam torreta.
-        Isso funciona para limitar a torreta a um ângulo de atuação [-180, 180].
-        Mesmo que o caminho mais curto entre 180 => 190 seja 10, ele vai escolher o -350 não bater o limite.
-     */
+    private static final String SERVO_NAME = "turret";
 
-    private final NextLimelight limelight;
-    public double degs;
-    private double lastWrappedTarget = 0;
-    private Storage.Alliance alliance;
+    private static final Angle SERVO_RANGE_DEG = Degrees.of(300);
 
-    private double vx, vy;
+    /** Turret degrees per servo degree. 1.0 = direct drive. 1/3 = servo gear 20T driving turret 60T. */
+    private static final double TURRET_PER_SERVO = 0.5;
+
+    private static final double PWM_MIN_US = 500, PWM_MAX_US = 2500;
+
+    /** Stay away from the physical ends of the servo. */
+    private static final double SERVO_MIN_POS = 0.01, SERVO_MAX_POS = 0.99;
+
+    /** Flip if +angle moves the turret the wrong way. Probable if using gears, since they invert motion. */
+    private static final boolean SERVO_REVERSED = true;
+
+    /** Flip to -1 if Limelight tx>0 makes the turret aim away from the tag. */
+    private static final double AIM_SIGN = 1.0;
+
+    /** Fraction of tx corrected per new result (lower if it oscillates because of camera latency). */
+    private static final double AIM_GAIN = 0.8;
+
+    /** Ignore tx smaller than this (deg) */
+    private static final double AIM_DEADBAND_DEG = 0.7;
+
+    /** Max turret speed (deg/s). Keep under ~70% of servo speed * TURRET_PER_SERVO.  */
+    private static final double MAX_SLEW_DPS = 300.0;
+
+    private static String currentLocation = "Audience";
+
+    public void switchLocation() {
+        currentLocation = (String) Storage.isEqualTo(currentLocation, "Audience", "Scoring");
+    }
+
+    public double getSpeed() {
+        return 0.0; // placeholder
+    }
+    // =========================================
+
+    public enum Mode { OFF, CALIBRATE, MANUAL, SEMI_AIM, AIMING, RECENTERING, TUNE_POSITION }
+
+    private static final Angle TURRET_RANGE_DEG = Degrees.of(SERVO_RANGE_DEG.into(Degrees) * TURRET_PER_SERVO);
 
     private final Storage.TurretConstants constants = new Storage.TurretConstants();
-    private NextMotor motor;
-    private String currLocation;
+    private final ServoImplEx servo;
+    private final NextLimelight limelight;
 
-    private final Storage.TagFamilies tags = new Storage.TagFamilies();
+    private Storage.Alliance alliance;
+    private Mode currentMode = Mode.OFF;
 
-    // Turret heading error (+ chassis-rotation disturbance) -> target angular velocity
-    private final PIDFController headingPID = new PIDFController(
-            constants.posKp, constants.posKi, constants.posKd, constants.posKf);
-    // posKp, posKi, posKd, posKf, edit with editConfigs("posKp", x);
-
-    public double currentVelocity, currentAngle;
+    /** Modelled turret angle (deg) = last commanded angle. Center of the servo = WRAP_CENTER. */
+    public double currentAngle;
     public boolean calledPeriodic = false;
-    private double err = 0, botAng = 0, lastTx = 0;
 
-    private Mode currentMode = Mode.AIMING;
-
-    public enum Mode { AIMING, RECENTERING, TUNE_VELOCITY, TUNE_POSITION }
-
+    private double targetAngle;
+    private double err = 0;
+    private double lastWrappedTarget;
+    private double lastResultTimestamp = -1;
     private double manualAngle = 0, manualVelocity = 0;
+    private long lastNanos = 0;
 
-    public void setMode(Mode m) { currentMode = m; }
+    public Turret(HardwareMap hw) {
+        servo = hw.get(ServoImplEx.class, SERVO_NAME);
+        servo.setPwmRange(new PwmControl.PwmRange(PWM_MIN_US, PWM_MAX_US));
+
+        servo.setPosition(posForServo(0.5));
+
+        limelight = new NextLimelight("Ethernet Device");
+        limelight.startReading(0, 100);
+
+        currentAngle = constants.WRAP_CENTER; // we assume the turret starts centered
+        targetAngle = currentAngle;
+        lastWrappedTarget = currentAngle;
+    }
+
+    // ------------------------------------------------------------------ public API
+
+    /**
+     * Sets the Turret Mode<br>
+     *    OFF           ==> PWM disabled (servo limp).<br>
+     *    CALIBRATE     ==> servo parked at 0.5. Use it to mount the horn / gear so the turret points forward.<br>
+     *    MANUAL        ==> setManualVelocity(deg/s) moves the turret. Check the direction first.<br>
+     *    SEMI_AIM      ==> Limelight aim, any tag, NO wrapping (just limits). For testing.<br>
+     *    AIMING        ==> Limelight aim on goal tags, WITH wrapping into the safe range.<br>
+     *    RECENTERING   ==> go to the center.<br>
+     *    TUNE_POSITION ==> go to setManualAngle(deg).<br>
+     *    <br>
+     *
+     * @param m new mode
+     */
+    public void setMode(Mode m) {
+        if (m == currentMode) return;
+        currentMode = m;
+        targetAngle = currentAngle; // never start a mode chasing an old target
+        lastWrappedTarget = currentAngle;
+        manualVelocity = 0;
+    }
+
+    public Mode getMode() { return currentMode; }
     public void setManualAngle(double deg) { manualAngle = deg; }
     public void setManualVelocity(double dps) { manualVelocity = dps; }
     public double getAngle() { return currentAngle; }
+    public double getError() { return err; }
+    public double getTargetAngle() { return targetAngle; }
+    public double getServoPosition() { return angleToServo(currentAngle); }
+    public Storage.Alliance getAlliance() { return alliance; }
+    public void setAlliance(Storage.Alliance alliance) { this.alliance = alliance; }
 
-    public void applyConstants() {
-        headingPID.setPIDF(constants.posKp, constants.posKi, constants.posKd, constants.posKf); // add this to your PIDFController
-        motor.getVelocityConstants().setKP(constants.velKp);
-        motor.getVelocityConstants().setKI(constants.velKi);
-        motor.getVelocityConstants().setKD(constants.velKd);
-        motor.getVelocityConstants().setKS(constants.velKs);
-        motor.getVelocityConstants().setKV(constants.velKv);
-        motor.getVelocityConstants().setKA(constants.velKa);
+    public void forceStop() {
+        limelight.stop();
+        setMode(Mode.OFF);
     }
 
-    public void update() {
-        currentAngle = 0;
-        currentVelocity = motor.getEncoderVelocity().into(DegreesPerSecond);
+    // ------------------------------------------------------------------ main loop
 
+    @Override
+    public void periodic() {
+        calledPeriodic = true;
+
+        long now = System.nanoTime();
+        double dt = lastNanos == 0 ? 0 : Range.clip((now - lastNanos) * 1e-9, 0, 0.1);
+        lastNanos = now;
+
+        double goal = currentAngle;
         switch (currentMode) {
-            case TUNE_VELOCITY:
-                motor.setVelocitySetpoint(DegreesPerSecond.of(manualVelocity));
+            case OFF:
+                if (servo.isPwmEnabled()) servo.setPwmDisable();
+                return;
+
+            case CALIBRATE:
+                if (!servo.isPwmEnabled()) servo.setPwmEnable();
+                currentAngle = constants.WRAP_CENTER;
+                servo.setPosition(posForServo(0.5));
+                return;
+
+            case MANUAL:
+                goal = currentAngle + manualVelocity * dt;
+                break;
+
+            case SEMI_AIM:
+                goal = aim(false);
+                break;
+
+            case AIMING:
+                goal = aim(true);
+                break;
+
+            case RECENTERING:
+                goal = constants.WRAP_CENTER;
                 break;
 
             case TUNE_POSITION:
-                botAngularVelocity(0);
-                err = 0;
-                double v = headingPID.calculate(err, 0);
-                v = Range.clip(v, -constants.MAX_VEL, constants.MAX_VEL);
-                motor.setVelocitySetpoint(DegreesPerSecond.of(0));
-                break;
-
-            default:
+                goal = manualAngle;
                 break;
         }
-        motor.update();
+
+        if (!servo.isPwmEnabled()) servo.setPwmEnable();
+
+        goal = clampToLimits(goal);
+        err = goal - currentAngle;
+
+        // move the model toward the goal at a limited speed, then command it
+        double maxStep = MAX_SLEW_DPS * dt;
+        currentAngle = clampToLimits(currentAngle + Range.clip(err, -maxStep, maxStep));
+        servo.setPosition(angleToServo(currentAngle));
     }
 
-    public Turret() {
-        motor = new NextMotor(constants.motorName, Degrees.of(360.0 / 28.0));
-        limelight = new NextLimelight("Ethernet Device");
+    // ------------------------------------------------------------------ aiming
 
-        motor.getVelocityConstants().setKS(constants.velKs);
-        motor.getVelocityConstants().setKV(constants.velKv / (360.0 / 28.0));
+    /** Returns the goal angle. wrap = false is SEMI_AIM (clamped to the limits, no wrapping). */
+    private double aim(boolean wrap) {
+        LLResult res = limelight.getLatestResult();
 
-        headingPID.setIntegralClamp(constants.MAX_VEL);
-
-        limelight.startReading(0, 100);
-    }
-
-    public double getError() { return err; }
-    public double getSpeed() { return currentVelocity; }
-    public void botAngularVelocity(double v) { botAng = v; }
-
-    private double __coeff(double y, double x) {
-        if (x == -1) {
-            return y;
-        } else {
-            return x;
+        // Get a NEW target only from a new, fresh, valid result; otherwise hold the last absolute target.
+        if (res.isValid() && res.getTimestamp() != lastResultTimestamp && res.getStaleness() < 100) {
+            lastResultTimestamp = res.getTimestamp();
+            Double tx = readTx(res, wrap);
+            if (tx != null && Math.abs(tx) > AIM_DEADBAND_DEG) {
+                targetAngle = currentAngle + AIM_SIGN * AIM_GAIN * tx;
+            }
         }
+        return wrap ? wrapToSafeRange(targetAngle) : clampToLimits(targetAngle);
+    }
 
+    /** SEMI_AIM: any tag (LLResult tx). AIMING: only the goal tags, each with its own tx, averaged. */
+    private Double readTx(LLResult res, boolean onlyGoalTags) {
+        if (!onlyGoalTags || alliance == null) return res.getTx();
+
+        int[] goal = Storage.TagFamilies.get(alliance, currentLocation);
+        List<LLResultTypes.FiducialResult> fids = res.getFiducialResults();
+        if (fids == null) return null;
+
+        double sum = 0;
+        int n = 0;
+        for (LLResultTypes.FiducialResult f : fids) {
+            int id = f.getFiducialId();
+            if (id == goal[0] || id == goal[3]) {
+                sum += f.getTargetXDegrees();
+                n++;
+            }
+        }
+        return n > 0 ? sum / n : null;
+    }
+
+    // ------------------------------------------------------------------ geometry helpers
+
+    /** Turret angle (deg) -> servo position (0..1). */
+    private double angleToServo(double angle) {
+        double pos = 0.5 + (angle - constants.WRAP_CENTER) / TURRET_RANGE_DEG.into(Degrees);
+        return posForServo(pos);
+    }
+
+    private double posForServo(double pos) {
+        pos = Range.clip(pos, SERVO_MIN_POS, SERVO_MAX_POS);
+        return SERVO_REVERSED ? 1.0 - pos : pos;
+    }
+
+    /** Lowest reachable turret angle: servo limit, tightened by MAX_ANGLE from Storage. */
+    private double minAngle() {
+        double servoMin = constants.WRAP_CENTER + (SERVO_MIN_POS - 0.5) * TURRET_RANGE_DEG.into(Degrees);
+        return Math.max(servoMin, constants.WRAP_CENTER - constants.MAX_ANGLE / 2.0);
+    }
+
+    private double maxAngle() {
+        double servoMax = constants.WRAP_CENTER + (SERVO_MAX_POS - 0.5) * TURRET_RANGE_DEG.into(Degrees);
+        return Math.min(servoMax, constants.WRAP_CENTER + constants.MAX_ANGLE / 2.0);
+    }
+
+    private double clampToLimits(double angle) {
+        return Range.clip(angle, minAngle(), maxAngle());
     }
 
     /**
-    Edit Motor Velocity Coefficients, changes how much the motor reatcs to the target.
-    -1 means it will stay the same.
-     */
-    public void editVelocityCoefficients(double kp, double ki, double kd, double ks, double ka, double kv) {
-        constants.velKp = __coeff(constants.velKp, kp);
-        constants.velKi = __coeff(constants.velKi, ki);
-        constants.velKd = __coeff(constants.velKd, kd);
-        constants.velKs = __coeff(constants.velKs, ks);
-        constants.velKa = __coeff(constants.velKa, ka);
-        constants.velKv = __coeff(constants.velKv, kv);
-    }
-
-    /**
-     Edit Motor Velocity Coefficients, changes how much the motor reatcs to the target.
-     -1 means it will stay the same.
-     */
-    public void editVelocityCoefficients(PIDCoefficients pid, SimpleFFCoefficients feed) {
-        editVelocityCoefficients(pid.kP, pid.kI, pid.kD, feed.kS, feed.kA, feed.kV);
-    }
-
-    /**
-     Edit Position Coefficients, changes how much the turret reacts to the heading error.
-     -1 means it will stay the same.
-     */
-    public void editPositionCoefficients(double kp, double ki, double kd, double kv) {
-        constants.posKp = __coeff(constants.velKp, kp);
-        constants.posKi = __coeff(constants.velKi, ki);
-        constants.posKd = __coeff(constants.velKd, kd);
-        constants.posKf = __coeff(constants.velKv, kv);
-    }
-
-    /**
-     Edit Position Coefficients, changes how much the turret reacts to the heading error.
-     -1 means it will stay the same.
-     */
-    public void editPositionCoefficients(PIDFCoefficients coeff) {
-        editPositionCoefficients(coeff.p, coeff.i, coeff.d, coeff.f);
-    }
-
-
-    /**
-     * Wraps {@code angle} into the turret's safe mechanical range around WRAP_CENTER
-     * {@code (+-MAX_ANGLE/2)}, at the same dir as last target so value at the limit
-     * doesn't turn the turret back and forth by 350 every cycle.
+     * Wraps into [minAngle, maxAngle] (+-360). Only for the turret. Hysteresis keeps it from flipping
+     * 360 deg every loop when the target sits at the limit.
+     *
+     * Must consider that: Servos don't have 360-ish range, wrap only works to try to keep aiming besides limits.
      */
     private double wrapToSafeRange(double angle) {
-        double half = constants.MAX_ANGLE / 2.0;
-        double center = constants.WRAP_CENTER;
+        double lo = minAngle(), hi = maxAngle();
 
-        // Normalização Simples
         double wrapped = angle;
-        while (wrapped > center + half) wrapped -= 360;
-        while (wrapped <= center - half) wrapped += 360;
+        while (wrapped > hi) wrapped -= 360;
+        while (wrapped < lo) wrapped += 360;
+        if (wrapped > hi) wrapped = clampToLimits(angle); // range < 360 and angle falls in the dead zone, out of servo limits
 
-        // Simple check so that if the target is close to the max_angle, it does not spin 360 every single cycle (that would be sad)
         double alt = wrapped + (wrapped < lastWrappedTarget ? 360 : -360);
-        boolean inRange = alt > center - half && alt <= center + half;
-        boolean closerToLast = Math.abs(alt - lastWrappedTarget) + constants.WRAP_HYSTERESIS
+        boolean inRange = alt >= lo && alt <= hi;
+        boolean closerToLast = Math.abs(alt - lastWrappedTarget) + constants.WRAP_TOLERANCE
                 < Math.abs(wrapped - lastWrappedTarget);
         if (inRange && closerToLast) wrapped = alt;
 
         lastWrappedTarget = wrapped;
-
         return wrapped;
-    }
-
-    public Command changeLocation() {
-        return instant(() -> {
-            currLocation = (Objects.equals(currLocation, "Audience")) ? "Scoring" : "Audience";
-        }).setPriority(100);
-    }
-
-    public double getRequiredAngle(double pollenVelocity, double err, double robotX, double robotY) {
-        return Math.atan2(pollenVelocity * Math.sin(err) - vy, pollenVelocity * Math.cos(err) - vx);
-    }
-
-    /** Check if all tags are seen, if not, this means that the CELL bar is blocking
-     * one of the tags or the robot is completely unaimed. If so, aim for the border of the
-     * aprilTags for better condition.
-     * @param seen current seen tags.
-     * @param currTags current target tags;
-     * @return boolean, prioritize middle.
-     */
-    private boolean attemptToPrioritizeMiddle(LLResult seen, int[] currTags) {
-        Set<Integer> tags = Set.of(currTags[0], currTags[1], currTags[2], currTags[3]);
-
-        if (!seen.isValid()) return true;
-        int inCurrTags = 0;
-        for (LLResultTypes.FiducialResult fid : seen.getFiducialResults()) {
-            if (tags.contains(fid.getFiducialId())) {
-                inCurrTags++;
-            }
-        }
-
-        return inCurrTags == currTags.length;
-    }
-
-    /**
-     * Attempts to guess the side to prioritize given the seen tags.
-     * If there are more tags in one side, aim for the other.
-     * @param seen
-     * @param currTags
-     * @param sidePriorityTag
-     * @return
-     */
-    private double sidePriority(LLResult seen, int[] currTags, int sidePriorityTag) {
-        Set<Integer> rightSide = Set.of(currTags[2], currTags[3]);
-        Set<Integer> leftSide = Set.of(currTags[0], currTags[1]);
-
-        int side = rightSide.contains(sidePriorityTag) ? 1 : -1;
-        // RIGHT (1), LEFT (-1)
-
-
-
-        ArrayList<Integer> seenTags = new ArrayList<>();
-
-        for (LLResultTypes.FiducialResult fid : seen.getFiducialResults()) {
-            seenTags.add(fid.getFiducialId());
-        }
-
-        long l = seenTags.stream()
-                .filter(leftSide::contains)
-                .count();
-
-        long r = seenTags.stream()
-                .filter(rightSide::contains)
-                .count();
-
-        if (l > r && side == -1) {
-            return 0.5;
-        } else if (l > r && side == 1) {
-            return 1.5;
-        } else if (r > l && side == -1) {
-            return 1.5;
-        } else if (r > l && side == 1) {
-            return 0.5;
-        } else {
-            return 1;
-        }
-    }
-
-    private void passInRobotVelocity(double vx, double vy) {
-        this.vx = vx; this.vy = vy;
-    }
-
-    private Command aim() {
-        return infinite(() -> {
-            LLResult res = limelight.getLatestResult();
-            boolean found = false;
-
-            int[] currTags = Storage.TagFamilies.get(alliance, "Scoring");
-            int count = 0;
-
-
-            if (attemptToPrioritizeMiddle(res, currTags)) {
-                for (LLResultTypes.FiducialResult fid : res.getFiducialResults()) {
-                    if (fid.getFiducialId() != currTags[0] && fid.getFiducialId() != currTags[3])
-                        continue;
-                    err += res.getTx();
-                    found = true;
-                    count++;
-                }
-            } else {
-                for (LLResultTypes.FiducialResult fid : res.getFiducialResults()) {
-                    if (fid.getFiducialId() != currTags[0] && fid.getFiducialId() != currTags[3])
-                        continue;
-                    err += res.getTx() * sidePriority(res, currTags, fid.getFiducialId());
-                    found = true;
-                    count++;
-                }
-            }
-
-
-            if (count > 0) err /= count;
-
-            if (!found || !res.isValid()) err = lastTx;
-
-            calledPeriodic = true;
-            currentAngle = 0; // encoder do motor já convertido pra engrenagem da torreta
-
-            double desiredAngle = currentAngle + err; // adiciona o erro
-            double wrappedTarget = wrapToSafeRange(desiredAngle); // wrap pra ele não fazer +1 rotação e explodir cabo
-            // sucesso?
-
-            double angleError = wrappedTarget - currentAngle;
-
-            double targetAngularVelocity = headingPID.calculate(angleError, -botAng) / 5;
-            targetAngularVelocity = Range.clip(targetAngularVelocity, -constants.MAX_VEL, constants.MAX_VEL);
-
-            motor.setVelocitySetpoint(DegreesPerSecond.of(targetAngularVelocity));
-
-            currentVelocity = motor.getEncoderVelocity().into(DegreesPerSecond);
-            motor.update();
-
-            lastTx = err;
-        });
-    }
-
-    public Storage.Alliance getAlliance() {
-        return alliance;
-    }
-
-    public void setAlliance(Storage.Alliance alliance) {
-        this.alliance = alliance;
-    }
-
-    /**
-     * editCoefficients("velKp", 12)
-     * @param k name of the gain as a String, utilize it EXACTLY as mentioned in Storage.
-     * @param x new value.
-     * @return Command to be scheduled.
-     */
-    private Command editCoefficient(String k, double x) {
-        return instant(() -> {
-            constants.editSetting(k, x);
-        });
-    }
-
-    @Override
-    public void periodic() {
-        switch (currentMode) {
-            case AIMING: aim().execute(); break;
-        }
     }
 }

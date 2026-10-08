@@ -63,12 +63,14 @@ public class Teleop extends NextOpMode {
             robot.getTurret().setAlliance(Storage.GlobalAlliance);
         }
 
+        /*
         tops.leftBumper()
                 .onTrue(turret().changeLocation());
 
         telemetry.addData("Turret Error: ", robot.getTurret().getError());
         telemetry.addData("Turret Speed: ", robot.getTurret().getSpeed());
         telemetry.addData("Degrees: ", robot.getTurret().degs);
+         */
         telemetry.addData("Called Periodic: ", robot.getTurret().calledPeriodic);
 
         robot.getShooter().setTargetVelocity(RotationsPerMinute.of(4000));

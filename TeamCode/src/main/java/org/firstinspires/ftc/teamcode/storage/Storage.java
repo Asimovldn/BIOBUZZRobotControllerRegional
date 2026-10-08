@@ -39,8 +39,8 @@ public class Storage {
         public double velKp = 0.01, velKi = 0.002, velKd = 0.0;
         public double velKs = 0.08, velKv = 0.00242, velKa = 0.0;
 
-        public int MAX_ANGLE = 350;
-        public int WRAP_CENTER = 0, WRAP_HYSTERESIS = 20;
+        public int MAX_ANGLE = 300;
+        public int WRAP_CENTER = 0, WRAP_TOLERANCE = 10;
         public int MOTOR_GEAR = 20, TURRET_GEAR = 40;
         public double GEAR_RATIO;
 
@@ -75,6 +75,14 @@ public class Storage {
             return angle / 180;
         }
     };
+
+    public static class IntakeConstants {
+        public double kS = 0.16, kV = 0.0000571;
+
+        public IntakeConstants() {};
+
+
+    }
 
     public void editSetting(String setting, Object v) {
         try {

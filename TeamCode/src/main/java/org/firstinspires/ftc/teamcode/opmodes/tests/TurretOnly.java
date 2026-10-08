@@ -50,7 +50,6 @@ public class TurretOnly extends NextOpMode {
         }
 
         robot.getTurret().setManualAngle(ang);
-        robot.getTurret().update();
 
         telemetry.update();
     }

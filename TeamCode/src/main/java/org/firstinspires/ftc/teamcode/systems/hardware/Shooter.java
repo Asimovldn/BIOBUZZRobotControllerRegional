@@ -1,9 +1,7 @@
 package org.firstinspires.ftc.teamcode.systems.hardware;
 
-import static dev.nextftc.units.Units.Degrees;
-import static dev.nextftc.units.Units.DegreesPerSecond;
-
 import org.firstinspires.ftc.teamcode.storage.Storage;
+import org.firstinspires.ftc.teamcode.systems.hardware.core.SimpleMotorized;
 
 import dev.nextftc.hardware.actuators.NextMotor;
 import dev.nextftc.robot.Mechanism;
@@ -20,21 +18,16 @@ public class Shooter implements Mechanism {
         motor.getVelocityConstants().setKV(constants.kV);
     }
 
-    public void setTargetVelocity(AngularVelocity v) {
-        motor.setVelocitySetpoint(v);
+    public void setThrottle(double x) {
+        motor.setThrottle(x);
     }
 
-    public void setThrottle(double x) {
-        motor.setThrottle(x * 0.9);
+    public void setTargetVelocity(AngularVelocity x) {
+        motor.setVelocitySetpoint(x);
     }
 
     public AngularVelocity Speed() {
         return motor.getEncoderVelocity();
-    }
-
-    public boolean atSpeed(AngularVelocity target, AngularVelocity tolerance) {
-        return Math.abs(Speed().into(DegreesPerSecond)
-                - target.into(DegreesPerSecond)) < tolerance.into(DegreesPerSecond);
     }
 
     @Override
