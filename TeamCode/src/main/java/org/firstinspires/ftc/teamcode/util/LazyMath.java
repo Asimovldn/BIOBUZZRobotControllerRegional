@@ -76,4 +76,8 @@ public class LazyMath {
     }
 
     public static boolean compare(Object a, Object b) { return a.equals(b); }
+
+    public static double normalize(double t, double a, double b) {
+        return (t - a) / (b - a);
+    }
 }

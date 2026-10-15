@@ -75,7 +75,7 @@ public class Teleop extends NextOpMode {
 
         robot.getShooter().setTargetVelocity(RotationsPerMinute.of(4000));
 
-        telemetry.addData("Velocidade Atual: ", robot.getShooter().Speed().into(RotationsPerMinute));
+        telemetry.addData("Velocidade Atual: ", robot.getShooter().Speed()[0].into(RotationsPerMinute));
 
         telemetry.update();
     };

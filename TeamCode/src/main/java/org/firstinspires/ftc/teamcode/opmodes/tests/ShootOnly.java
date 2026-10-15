@@ -20,7 +20,7 @@ public class ShootOnly extends NextOpMode {
     @Override
     public void periodic() {
         telemetry.addData("Current Gamepad: ", gamepad1.left_stick_y);
-        telemetry.addData("Current Velocity: ", robot.getShooter().Speed().into(RotationsPerMinute));
+        telemetry.addData("Current Velocity: ", robot.getShooter().Speed()[0].into(RotationsPerMinute));
 
         // 12000deg/s (1666rpm) muito fraco
         // 25000deg/s bateu no TETO

@@ -1,23 +1,39 @@
 package org.firstinspires.ftc.teamcode.storage;
 
+import static com.pedropathing.utils.Utils.lerp;
+
 import com.pedropathing.math.Pose;
 
 import org.firstinspires.ftc.teamcode.util.LazyMath;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 import static org.firstinspires.ftc.teamcode.util.LazyMath.compare;
+import static org.firstinspires.ftc.teamcode.util.LazyMath.normalize;
 
 public class Storage {
     public static Pose autonomousEnd = new Pose(0, 0, 0); // TODO: change this later
     public static double targetBoost = 0;
 
+    public static HashMap<Integer, Double> tagMap = new HashMap<>(16);
+
     public static class ShooterConstants {
-        public double kP = 0.01, kI = 0.001, kD = 0.005, kS = 0.16, kV = 0.0000571;
+
+        public static class BackShooter {
+            public double kP = 0.01, kI = 0.001, kD = 0.005, kS = 0.16, kV = 0.0000571;
+        }
+
+        public static class ForeShooter {
+            public double kP = 0.01, kI = 0.001, kD = 0.005, kS = 0.16, kV = 0.0000571;
+        }
 
         public void editSetting(String setting, Object v) {
             try {
@@ -28,10 +44,159 @@ public class Storage {
                 throw new RuntimeException(e);
             };
         }
+
+        public static class ShootingUnit {
+            public final double ta, multiplier, hoodAngle;
+            public ShootingUnit(double targetArea, double mult, double hood) {
+                ta = targetArea; multiplier = mult; hoodAngle = hood;
+            }
+
+            /** for templates */
+            public ShootingUnit() {
+                ta = 0; multiplier = 0; hoodAngle = 0;
+            }
+
+            public List<Double> asList() {
+                return List.of(ta, multiplier, hoodAngle);
+            }
+        }
+
+        public static class OdometryUnit {
+            public final Pose pose;
+            public final double multiplier, hoodAngle;
+
+            public OdometryUnit(Pose pos, double m, double hood) {
+                pose = pos; multiplier = m; hoodAngle = hood;
+            }
+
+            public OdometryUnit() {
+                pose = Pose.zero(); multiplier = 0; hoodAngle = 0;
+            }
+        }
+
+        public ShootingUnit[] table = {
+                new ShootingUnit()
+        };
+
+        public OdometryUnit[] withOdometry = {
+                new OdometryUnit()
+        };
+
+
+        public ShootingUnit getUnit(double ta) {
+            @Nullable
+            ShootingUnit res = null;
+            for (ShootingUnit un : table) {
+                if (un.ta == ta) {
+                    res = un;
+                }
+            }
+
+            if (res == null) {
+                ShootingUnit[] closest = getClosestUnits(ta);
+
+                double alpha = normalize(ta, closest[0].ta, closest[1].ta);
+                double multiplier = lerp(closest[0].multiplier, closest[1].multiplier, alpha);
+                double hoodAngle = lerp(closest[0].hoodAngle, closest[1].hoodAngle, alpha);
+
+                res = new ShootingUnit(ta, multiplier, hoodAngle);
+            }
+
+            return res;
+        }
+
+        public ShootingUnit[] getClosestUnits(double ta) {
+            ShootingUnit last = new ShootingUnit();
+            ShootingUnit[] res = new ShootingUnit[2];
+            for (ShootingUnit un : table) {
+                if (ta < un.ta && ta > last.ta) {
+                    res[0] = last;
+                    res[1] = un;
+                }
+
+                last = un;
+            }
+
+            if (res[0] == null || res[1] == null) {
+                throw new ArithmeticException("Cannot find closest units, please, insert more units inside the Look Up Table");
+            }
+
+            return res;
+        }
+
+        public OdometryUnit getUnit(Pose pos) {
+            @Nullable
+            OdometryUnit res = null;
+            for (OdometryUnit un : withOdometry) {
+                if (un.pose == pos) {
+                    res = un;
+                }
+            }
+
+            if (res == null) {
+                OdometryUnit[] closest = getClosestUnits(pos);
+
+                Pose a = closest[0].pose, b = closest[1].pose;
+
+                double dx = b.x() - a.x();
+                double dy = b.y() - a.y();
+
+                double d = dx * dx + dy * dy;
+                if (d == 0) return closest[0]; // both points are equal, somehow;
+
+                double alpha = ((pos.x() - a.x()) * dx + (pos.y() - a.y()) * dy) / d;
+                double multiplier = lerp(closest[0].multiplier, closest[1].multiplier, alpha);
+                double hoodAngle = lerp(closest[0].hoodAngle, closest[1].hoodAngle, alpha);
+
+                res = new OdometryUnit(pos, multiplier, hoodAngle);
+            }
+
+            return res;
+        }
+
+        public OdometryUnit[] getClosestUnits(Pose pos) {
+            OdometryUnit last = new OdometryUnit();
+            OdometryUnit[] res = new OdometryUnit[2];
+
+            double smallDist = 9999;
+            OdometryUnit smallUnit = new OdometryUnit(), altSmallUnit = new OdometryUnit();
+            double altSmallDist = 9999;
+
+            for (OdometryUnit un : withOdometry) {
+                if (pos.distance(un.pose) < smallDist) {
+                    altSmallDist = smallDist;
+                    altSmallUnit = smallUnit;
+
+                    smallDist = pos.distance(un.pose);
+                    smallUnit = un;
+                }
+            }
+
+            res[0] = smallUnit; res[1] = altSmallUnit;
+
+            return res;
+        }
+
+        /**
+         * Gets the unit from both Pose and the Target Area, getting their average
+         * and utilizing that as a result. Good for precision giving both tunings.
+         * @param pos Current Pose.
+         * @param ta Limelight Target Area.
+         * @return OdometryUnit with averaged multipler and hoodAngle values.
+         */
+        public OdometryUnit fromBoth(Pose pos, double ta) {
+            ShootingUnit fromTA = getUnit(ta);
+            OdometryUnit fromPose = getUnit(pos);
+
+            double mult = (fromTA.multiplier + fromPose.multiplier) / 2;
+            double angle = (fromTA.hoodAngle + fromPose.hoodAngle) / 2;
+
+            return new OdometryUnit(pos, mult, angle);
+        }
     };
 
     public static class TurretConstants {
-        // Custom PIDF (not NextMotor control)
+        // Custom PIDF (not NextFTC control)
         public double posKp = 0.008, posKi = 0.0005, posKd = 0.004;
         public double posKf = 1.0; // multiplies -botAngularVelocity for disturbance cancellation
 
@@ -49,14 +214,19 @@ public class Storage {
         // em tese use angleTolerance = 2, mas pode chutar qualquer valor sei lá.
         public double angleTolerance = 7;
 
-        public double MAX_VEL = 12; // degrees/sec, turret-referenced
 
         public TurretConstants() {
             GEAR_RATIO = (double) TURRET_GEAR / MOTOR_GEAR;
         }
 
+        public void fillTagMap() {
+            tagMap.put(34, -16.5);
+            tagMap.put(35, -7.0);
+            tagMap.put(36, 7.0);
+            tagMap.put(37, 16.5);
+        }
+
         public TurretConstants(double MAX_VELOCITY) {
-            MAX_VEL = MAX_VELOCITY;
             GEAR_RATIO = (double) TURRET_GEAR / MOTOR_GEAR;
         }
 

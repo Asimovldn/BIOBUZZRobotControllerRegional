@@ -7,14 +7,15 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PwmControl;
-import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.storage.Storage;
 import org.firstinspires.ftc.teamcode.util.LazyMath;
 
+import java.util.Arrays;
 import java.util.List;
 
+import dev.nextftc.hardware.actuators.NextServo;
 import dev.nextftc.hardware.webcams.NextLimelight;
 import dev.nextftc.robot.Mechanism;
 import dev.nextftc.units.measuretypes.Angle;
@@ -47,7 +48,10 @@ public class Turret implements Mechanism {
     private static final Angle SERVO_RANGE_DEG = Degrees.of(300);
 
     /** Turret degrees per servo degree. 1.0 = direct drive. 1/3 = servo gear 20T driving turret 60T. */
-    private static final double TURRET_PER_SERVO = 0.5;
+    private static final double TURRET_PER_SERVO = 20.0 / 40;
+
+    /** CONTROL: is servo enabled? */
+    private boolean servoEnabled;
 
     private static final double PWM_MIN_US = 500, PWM_MAX_US = 2500;
 
@@ -61,19 +65,23 @@ public class Turret implements Mechanism {
     private static final double AIM_SIGN = 1.0;
 
     /** Fraction of tx corrected per new result (lower if it oscillates because of camera latency). */
-    private static final double AIM_GAIN = 0.8;
+    private static final double AIM_GAIN = 0.4; // lower this a lot, also helps with turret movement.
 
     /** Ignore tx smaller than this (deg) */
-    private static final double AIM_DEADBAND_DEG = 0.7;
+    private static final double AIM_DEADBAND_DEG = 4;
 
     /** Max turret speed (deg/s). Keep under ~70% of servo speed * TURRET_PER_SERVO.  */
-    private static final double MAX_SLEW_DPS = 300.0;
+    private static final double MAX_SLEW_DPS = 90.0;
 
-    private static String currentLocation = "Audience";
+    public String currentLocation = "Audience";
+
+    private double deltatime = 0;
 
     public void switchLocation() {
         currentLocation = (String) Storage.isEqualTo(currentLocation, "Audience", "Scoring");
     }
+
+    public double isLimelighteando;
 
     public double getSpeed() {
         return 0.0; // placeholder
@@ -85,15 +93,17 @@ public class Turret implements Mechanism {
     private static final Angle TURRET_RANGE_DEG = Degrees.of(SERVO_RANGE_DEG.into(Degrees) * TURRET_PER_SERVO);
 
     private final Storage.TurretConstants constants = new Storage.TurretConstants();
-    private final ServoImplEx servo;
+    private final NextServo servo;
     private final NextLimelight limelight;
 
     private Storage.Alliance alliance;
     private Mode currentMode = Mode.OFF;
 
     /** Modelled turret angle (deg) = last commanded angle. Center of the servo = WRAP_CENTER. */
-    public double currentAngle;
+    public double currentAngle, lastCurrentAngle;
     public boolean calledPeriodic = false;
+
+    public int[] readingTag = new int[4];
 
     private double targetAngle;
     private double err = 0;
@@ -102,21 +112,32 @@ public class Turret implements Mechanism {
     private double manualAngle = 0, manualVelocity = 0;
     private long lastNanos = 0;
 
-    public Turret(HardwareMap hw) {
-        servo = hw.get(ServoImplEx.class, SERVO_NAME);
+    private double seenTa;
+
+    private boolean hasRun = false;
+
+    public Turret() {
+        servo = new NextServo(SERVO_NAME);
         servo.setPwmRange(new PwmControl.PwmRange(PWM_MIN_US, PWM_MAX_US));
 
-        servo.setPosition(posForServo(0.5));
+        servo.setPosition(0.5);
 
         limelight = new NextLimelight("Ethernet Device");
-        limelight.startReading(0, 100);
+
 
         currentAngle = constants.WRAP_CENTER; // we assume the turret starts centered
+        lastCurrentAngle = currentAngle;
         targetAngle = currentAngle;
         lastWrappedTarget = currentAngle;
     }
 
-    // ------------------------------------------------------------------ public API
+    // ------------------------------------------------------
+
+    public void reset() {
+        limelight.startReading(0, 100);
+        servo.setPosition(0.5);
+        limelight.getCamera().reloadPipeline();
+    }
 
     /**
      * Sets the Turret Mode<br>
@@ -137,7 +158,10 @@ public class Turret implements Mechanism {
         targetAngle = currentAngle; // never start a mode chasing an old target
         lastWrappedTarget = currentAngle;
         manualVelocity = 0;
+        hasRun = false;
     }
+
+    public boolean chamouSim = false;
 
     public Mode getMode() { return currentMode; }
     public void setManualAngle(double deg) { manualAngle = deg; }
@@ -164,16 +188,18 @@ public class Turret implements Mechanism {
         double dt = lastNanos == 0 ? 0 : Range.clip((now - lastNanos) * 1e-9, 0, 0.1);
         lastNanos = now;
 
+        deltatime = dt * 1000 %.3f; // ms
+
         double goal = currentAngle;
         switch (currentMode) {
             case OFF:
-                if (servo.isPwmEnabled()) servo.setPwmDisable();
+                if (servoEnabled) servo.disable(); servoEnabled = false;
                 return;
 
             case CALIBRATE:
-                if (!servo.isPwmEnabled()) servo.setPwmEnable();
+                if (!servoEnabled) servo.enable(); servoEnabled = true;
                 currentAngle = constants.WRAP_CENTER;
-                servo.setPosition(posForServo(0.5));
+                servo.setPosition(0.5);
                 return;
 
             case MANUAL:
@@ -197,15 +223,26 @@ public class Turret implements Mechanism {
                 break;
         }
 
-        if (!servo.isPwmEnabled()) servo.setPwmEnable();
+        if (!servoEnabled) servo.enable(); servoEnabled = true;
 
         goal = clampToLimits(goal);
-        err = goal - currentAngle;
+        err = (goal - currentAngle);
 
-        // move the model toward the goal at a limited speed, then command it
-        double maxStep = MAX_SLEW_DPS * dt;
-        currentAngle = clampToLimits(currentAngle + Range.clip(err, -maxStep, maxStep));
-        servo.setPosition(angleToServo(currentAngle));
+        isLimelighteando = goal;
+
+        if (Math.abs(err) > 2.3 || Math.abs(err) - Math.abs(lastCurrentAngle) > 4){
+            // move the model toward the goal at a limited speed, then command it
+            double maxStep = MAX_SLEW_DPS * dt;
+            currentAngle = clampToLimits(currentAngle + Range.clip(err, -maxStep, maxStep));
+            servo.setPosition(angleToServo(currentAngle));
+            lastCurrentAngle = err;
+            hasRun = true;
+        };
+
+    }
+
+    public double getTa() {
+        return seenTa;
     }
 
     // ------------------------------------------------------------------ aiming
@@ -214,15 +251,27 @@ public class Turret implements Mechanism {
     private double aim(boolean wrap) {
         LLResult res = limelight.getLatestResult();
 
+        chamouSim = res.isValid();
+
         // Get a NEW target only from a new, fresh, valid result; otherwise hold the last absolute target.
-        if (res.isValid() && res.getTimestamp() != lastResultTimestamp && res.getStaleness() < 100) {
+        if (res.isValid()) {
             lastResultTimestamp = res.getTimestamp();
             Double tx = readTx(res, wrap);
             if (tx != null && Math.abs(tx) > AIM_DEADBAND_DEG) {
                 targetAngle = currentAngle + AIM_SIGN * AIM_GAIN * tx;
+            } else {
+                targetAngle = -lastCurrentAngle;
             }
         }
         return wrap ? wrapToSafeRange(targetAngle) : clampToLimits(targetAngle);
+    }
+
+    private void setTagRead(int id, int n) {
+        readingTag[n] = id;
+    }
+
+    private void resetTagRead() {
+        readingTag = new int[4];
     }
 
     /** SEMI_AIM: any tag (LLResult tx). AIMING: only the goal tags, each with its own tx, averaged. */
@@ -233,16 +282,35 @@ public class Turret implements Mechanism {
         List<LLResultTypes.FiducialResult> fids = res.getFiducialResults();
         if (fids == null) return null;
 
+        List<Integer> goalTags = List.of(goal[0], goal[1], goal[2], goal[3]);
+
         double sum = 0;
         int n = 0;
+
+        resetTagRead();
+
         for (LLResultTypes.FiducialResult f : fids) {
             int id = f.getFiducialId();
-            if (id == goal[0] || id == goal[3]) {
-                sum += f.getTargetXDegrees();
-                n++;
-            }
+            if (goalTags.contains(id)) {
+                try {
+                    setTagRead(id, n);
+                    sum += f.getTargetXDegrees() + (Storage.tagMap.get(id) / 2);
+                    n++;
+                    seenTa = f.getTargetArea();
+                    break;
+                } catch (NullPointerException err) {
+                    setTagRead(id, n);
+                    sum += f.getTargetXDegrees();
+                    n++;
+                }
+            };
         }
+
         return n > 0 ? sum / n : null;
+    }
+
+    public double getDeltatime() {
+        return deltatime;
     }
 
     // ------------------------------------------------------------------ geometry helpers
@@ -252,6 +320,7 @@ public class Turret implements Mechanism {
         double pos = 0.5 + (angle - constants.WRAP_CENTER) / TURRET_RANGE_DEG.into(Degrees);
         return posForServo(pos);
     }
+
 
     private double posForServo(double pos) {
         pos = Range.clip(pos, SERVO_MIN_POS, SERVO_MAX_POS);

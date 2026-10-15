@@ -3,29 +3,47 @@ package org.firstinspires.ftc.teamcode.opmodes.tests;
 import static dev.nextftc.units.Units.RadiansPerSecond;
 import static dev.nextftc.units.Units.RotationsPerMinute;
 
+import com.pedropathing.ivy.Command;
+import com.pedropathing.ivy.Scheduler;
+import com.qualcomm.robotcore.hardware.Gamepad;
+
 import org.firstinspires.ftc.teamcode.systems.Bot;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 
 import dev.nextftc.robot.opmode.NextOpMode;
 import dev.nextftc.robot.opmode.NextTeleop;
+import dev.nextftc.robot.triggers.CommandGamepad;
 
 @NextTeleop
 public class TopDrums extends NextOpMode {
     public Bot robot;
+    public CommandGamepad gmp;
     public TopDrums(Bot bot) {
         super(bot);
         robot = bot;
+
+        gmp = new CommandGamepad(gamepad1);
     }
 
     @Override
     public void start() {
-        robot.getTurret().setMode(Turret.Mode.SEMI_AIM);
+        Scheduler.reset();
+        robot.getTurret().setMode(Turret.Mode.AIMING);
+        robot.getTurret().reset();
     }
 
     @Override
     public void periodic() {
         telemetry.addData("Current Gamepad: ", gamepad1.left_stick_y);
         telemetry.addData("Current Velocity: ", robot.getIntake().Speed().into(RotationsPerMinute));
+        telemetry.addData("Current Angle: ", robot.getTurret().getAngle());
+        telemetry.addData("Current Err: ", robot.getTurret().getError());
+        telemetry.addData("Current Speed: ", robot.getTurret().getSpeed());
+        telemetry.addData("Target Angle: ", robot.getTurret().getTargetAngle());
+        telemetry.addData("Servo Pos: ", robot.getTurret().getServoPosition());
+        telemetry.addData("TA: ", robot.getTurret().getTa());
+
+        Scheduler.execute();
 
         // 12000deg/s (1666rpm) muito fraco
         // 25000deg/s bateu no TETO
@@ -43,21 +61,26 @@ public class TopDrums extends NextOpMode {
 
         robot.getIntake().setThrottle(gamepad1.left_stick_y);
 
-        if (gamepad1.right_bumper) {
-            robot.getTransfer().setThrottle(1);
-        } else {
-            robot.getTransfer().setThrottle(gamepad1.left_stick_y * 0.2);
-        }
-
-        double strength = 5.3 * -gamepad1.left_trigger;
+        double strength = 4.8 * -gamepad1.left_trigger;
 
         if (Math.abs(strength) > 2) {
-            robot.getShooter().setTargetVelocity(RadiansPerSecond.of(1390 * strength));
+            robot.getShooter().setTargetVelocity(RadiansPerSecond.of(1140 * strength));
+            robot.getShooter().prepareLaunch(gamepad1.left_trigger).schedule();
         } else if (Math.abs(strength) == 0) {
             robot.getShooter().setThrottle(-0.02);
+            robot.getShooter().fullBrake().schedule();
         }
 
-        telemetry.addData("Shooter Speed: ", robot.getShooter().Speed());
+        if (gamepad1.right_bumper) {
+            Command c = robot.getShooter().enableLaunch();
+            Scheduler.schedule(c);
+            telemetry.addData("SHOOTING: ", c.isScheduled());
+        } else {
+            robot.getShooter().disableLaunch().schedule();
+        }
+
+        telemetry.addData("Fore Speed: ", robot.getShooter().Speed()[0]);
+        telemetry.addData("Back Speed: ", robot.getShooter().Speed()[1]);
 
         telemetry.update();
     }
