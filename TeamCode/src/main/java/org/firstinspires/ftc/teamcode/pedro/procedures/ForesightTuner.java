@@ -94,31 +94,31 @@ public class ForesightTuner extends Procedure {
         result("brake kV", brake);
 
         code(Language.JAVA,
-        "public static ForesightConfig foresightConfig = new ForesightConfig(\n" +
-                "            c -> {\n" +
-                "                Controller primaryTranslationalForward = Controller.proportional("+forwardTranslationalPrimary+");\n" +
-                "                Controller secondaryTranslationalForward = Controller.proportional("+forwardTranslationalSecondary+");\n" +
-                "                Controller primaryTranslationalLateral = Controller.proportional("+strafeTranslationalPrimary+");\n" +
-                "                Controller secondaryTranslationalLateral = Controller.proportional("+strafeTranslationalSecondary+");\n" +
-                "\n" +
-                "                c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));\n" +
-                "                c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));\n" +
-                "\n" +
-                "                c.coast.set(Controller.proportionalFeedforward("+coast+"));\n" +
-                "                c.brake.set(Controller.proportionalFeedforward("+brake+"));\n" +
-                "\n" +
-                "                c.headingFeedback.set(Controller.proportional("+heading+"));\n" +
-                "                c.headingBrakeCoefficients.set(Vector2D.cartesian("+headingLinear+", "+headingQuadratic+"));\n" +
-                "\n" +
-                "                c.linearBrakeCoefficients.set(Matrix.diag("+forwardLinear+", "+strafeLinear+"));\n" +
-                "                c.quadraticBrakeCoefficients.set(Matrix.diag("+forwardQuadratic+", "+strafeQuadratic+"));\n" +
-                "\n" +
-                "                c.maxAchievableForwardVelocity.set("+forwardVelocity+");\n" +
-                "                c.maxAchievableStrafeVelocity.set("+strafeVelocity+");\n" +
-                "                c.naturalForwardDeceleration.set("+forwardDeceleration+");\n" +
-                "                c.naturalStrafeDeceleration.set("+strafeDeceleration+");\n" +
-                "            }\n" +
-                "    );");
+                "public static ForesightConfig foresightConfig = new ForesightConfig(\n" +
+                        "            c -> {\n" +
+                        "                Controller primaryTranslationalForward = Controller.proportional("+forwardTranslationalPrimary+");\n" +
+                        "                Controller secondaryTranslationalForward = Controller.proportional("+forwardTranslationalSecondary+");\n" +
+                        "                Controller primaryTranslationalLateral = Controller.proportional("+strafeTranslationalPrimary+");\n" +
+                        "                Controller secondaryTranslationalLateral = Controller.proportional("+strafeTranslationalSecondary+");\n" +
+                        "\n" +
+                        "                c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));\n" +
+                        "                c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));\n" +
+                        "\n" +
+                        "                c.coast.set(Controller.proportionalFeedforward("+coast+"));\n" +
+                        "                c.brake.set(Controller.proportionalFeedforward("+brake+"));\n" +
+                        "\n" +
+                        "                c.headingFeedback.set(Controller.proportional("+heading+"));\n" +
+                        "                c.headingBrakeCoefficients.set(Vector2D.cartesian("+headingLinear+", "+headingQuadratic+"));\n" +
+                        "\n" +
+                        "                c.linearBrakeCoefficients.set(Matrix.diag("+forwardLinear+", "+strafeLinear+"));\n" +
+                        "                c.quadraticBrakeCoefficients.set(Matrix.diag("+forwardQuadratic+", "+strafeQuadratic+"));\n" +
+                        "\n" +
+                        "                c.maxAchievableForwardVelocity.set("+forwardVelocity+");\n" +
+                        "                c.maxAchievableStrafeVelocity.set("+strafeVelocity+");\n" +
+                        "                c.naturalForwardDeceleration.set("+forwardDeceleration+");\n" +
+                        "                c.naturalStrafeDeceleration.set("+strafeDeceleration+");\n" +
+                        "            }\n" +
+                        "    );");
     }
 }
 
@@ -173,7 +173,7 @@ class ForwardVelocity extends TuningOpMode<Double> {
         drivetrain.stop();
         double average = 0;
         for (double velocity : velocities) {
-                average += velocity;
+            average += velocity;
         }
         average /= velocities.size();
         return average;
@@ -1262,4 +1262,3 @@ class StrafeTranslational extends TuningOpMode<List<Double>> {
         this.tau = -1.0/linReg[1];
     }
 }
-
