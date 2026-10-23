@@ -43,10 +43,9 @@ public class Turret extends Mechanism {
         /** Turret degrees per servo degree. 1.0 = direct drive, 0.5 = servo gear drives a gear twice its size. */
         public static double turretPerServo = 1.0;
 
-        /** Turret angle (deg) the servo center points at, on top of WRAP_CENTER. Use it to remove a mounting offset. */
+        /** just in case the engineering team messes with the gear positions, adjust by degree offset */
         public static double centerTrimDeg = 0.0;
 
-        /** Look-ahead, seconds, applied to the TRACK target velocity to cancel servo lag. */
         public static double trackLeadSec = 0.04;
     }
 
@@ -163,7 +162,7 @@ public class Turret extends Mechanism {
         trackAngle = deg;
     }
 
-    /** Turret angle (deg) the Limelight says points at the goal, null if there is no new settled frame. TRACK mode only. */
+    /** limelight as a safety use for turret unalign */
     public Double consumeVisionAngle() {
         if (!visionFresh) return null;
 
@@ -295,6 +294,7 @@ public class Turret extends Mechanism {
         return wrap ? wrapToSafeRange(targetAngle) : clampToLimits(targetAngle);
     }
 
+    /** updates for turre track */
     private void visionUpdate(long now) {
         LLResult res = limelight.getLatestResult();
         if (res == null || !res.isValid() || res.getTimestamp() == lastResultTimestamp) return;
@@ -379,8 +379,8 @@ public class Turret extends Mechanism {
         return constants.WRAP_CENTER + Tune.centerTrimDeg;
     }
 
-    private static double ratio() {
-        return Math.max(0.05, Math.abs(Tune.turretPerServo));
+    public static double ratio() {
+        Math.abs(Tune.turretPerServo);
     }
 
     private static double rangeDeg() {
