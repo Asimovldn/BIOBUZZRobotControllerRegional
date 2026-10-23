@@ -35,21 +35,29 @@ public class Turret extends Mechanism {
     public static class Tune {
         public static double aimGain = 0.7;
         public static double aimDeadbandDeg = 1.5;
-        public static double maxSlewDps = 280.0;
         public static double settleSec = 0.08;
+
+        /** Servo shaft speed in deg/s. The turret slews at this times turretPerServo. */
+        public static double servoSpeedDps = 280.0;
+
+        /** Turret degrees per servo degree. 1.0 = direct drive, 0.5 = servo gear drives a gear twice its size. */
+        public static double turretPerServo = 1.0;
+
+        /** Turret angle (deg) the servo center points at, on top of WRAP_CENTER. Use it to remove a mounting offset. */
+        public static double centerTrimDeg = 0.0;
+
+        /** Look-ahead, seconds, applied to the TRACK target velocity to cancel servo lag. */
+        public static double trackLeadSec = 0.04;
     }
 
     private static final String SERVO_NAME = "turret";
     private static final int SERVO_RANGE_DEG = 300;
 
-    /** Turret degrees per servo degree. 1.0 = direct drive. */
-    private static final double TURRET_PER_SERVO = 1.0;
     private static final double PWM_MIN_US = 500, PWM_MAX_US = 2500;
     private static final double SERVO_MIN_POS = 0.005, SERVO_MAX_POS = 0.995;
     private static final double SERVO_WRITE_EPS = 0.001;
     private static final boolean SERVO_REVERSED = true;
     private static final double AIM_SIGN = 1.0;
-    private static final double TURRET_RANGE_DEG = SERVO_RANGE_DEG * TURRET_PER_SERVO;
 
     private static final int HISTORY = 64;
 
@@ -70,7 +78,10 @@ public class Turret extends Mechanism {
 
     private double targetAngle, err, lastWrappedTarget;
     private double lastResultTimestamp = -1;
-    private double manualAngle = 0, manualVelocity = 0, trackAngle = 0;
+    private double manualAngle = 0, manualVelocity = 0, trackAngle = 0, trackVel = 0;
+    private double visionAngle;
+    private boolean visionFresh = false;
+    private long trackStampNs = 0;
     private double lastServoPos = 0.5;
     private double seenTa, deltatime;
     private long lastNanos = 0, lastMoveNs = 0;
@@ -102,13 +113,17 @@ public class Turret extends Mechanism {
         servo.setPosition(0.5);
         lastServoPos = 0.5;
 
-        currentAngle = constants.WRAP_CENTER;
+        currentAngle = center();
         targetAngle = currentAngle;
         lastWrappedTarget = currentAngle;
         trackAngle = currentAngle;
+        trackVel = 0;
+        trackStampNs = 0;
+        visionFresh = false;
         err = 0;
         histCount = 0;
         histHead = 0;
+        lastMoveNs = System.nanoTime() + 1_000_000_000L;
 
         alliance = runtime.GlobalAlliance;
         currentLocation = runtime.location;
@@ -122,12 +137,40 @@ public class Turret extends Mechanism {
         targetAngle = currentAngle;
         lastWrappedTarget = currentAngle;
         manualVelocity = 0;
+        trackVel = 0;
+        visionFresh = false;
     }
 
     public Mode getMode() { return currentMode; }
     public void setManualAngle(double deg) { manualAngle = deg; }
     public void setManualVelocity(double dps) { manualVelocity = dps; }
-    public void setTrackAngle(double deg) { trackAngle = deg; }
+
+    public void setTrackAngle(double deg) {
+        long now = System.nanoTime();
+
+        if (trackStampNs != 0) {
+            double dt = (now - trackStampNs) * 1e-9;
+            double step = Util.wrapDeg(deg - trackAngle);
+
+            if (dt >= 0.2) {
+                trackVel = 0;
+            } else if (dt > 0.002 && Math.abs(step) < 10) {
+                trackVel += 0.3 * (step / dt - trackVel);
+            }
+        }
+
+        trackStampNs = now;
+        trackAngle = deg;
+    }
+
+    /** Turret angle (deg) the Limelight says points at the goal, null if there is no new settled frame. TRACK mode only. */
+    public Double consumeVisionAngle() {
+        if (!visionFresh) return null;
+
+        visionFresh = false;
+        return visionAngle;
+    }
+
     public void editGain(double x) { Tune.aimGain = x; }
     public double getAngle() { return currentAngle; }
     public double getError() { return err; }
@@ -170,7 +213,7 @@ public class Turret extends Mechanism {
 
             case CALIBRATE:
                 if (!servo.isPwmEnabled()) servo.setPwmEnable();
-                currentAngle = constants.WRAP_CENTER;
+                currentAngle = center();
                 servo.setPosition(0.5);
                 lastServoPos = 0.5;
                 return;
@@ -188,12 +231,15 @@ public class Turret extends Mechanism {
                 break;
 
             case TRACK:
-                goal = wrapToSafeRange(trackAngle);
+                if (trackVel != 0 && now - trackStampNs > 200_000_000L) trackVel = 0;
+                visionUpdate(now);
+
+                goal = wrapToSafeRange(trackAngle + Range.clip(trackVel, -slewDps(), slewDps()) * Tune.trackLeadSec);
                 targetAngle = goal;
                 break;
 
             case RECENTERING:
-                goal = constants.WRAP_CENTER;
+                goal = center();
                 break;
 
             case TUNE_POSITION:
@@ -206,12 +252,15 @@ public class Turret extends Mechanism {
         goal = clampToLimits(goal);
         err = goal - currentAngle;
 
-        double maxStep = Tune.maxSlewDps * dt;
+        double before = currentAngle;
+        double maxStep = slewDps() * dt;
         if (Math.abs(err) <= maxStep) {
             currentAngle = goal;
         } else {
             currentAngle = clampToLimits(currentAngle + Math.signum(err) * maxStep);
         }
+
+        if (Math.abs(currentAngle - before) > 0.02) lastMoveNs = now;
 
         double pos = angleToServo(currentAngle);
         boolean arrived = currentAngle == goal;
@@ -244,6 +293,22 @@ public class Turret extends Mechanism {
         }
 
         return wrap ? wrapToSafeRange(targetAngle) : clampToLimits(targetAngle);
+    }
+
+    private void visionUpdate(long now) {
+        LLResult res = limelight.getLatestResult();
+        if (res == null || !res.isValid() || res.getTimestamp() == lastResultTimestamp) return;
+        lastResultTimestamp = res.getTimestamp();
+
+        double ageMs = res.getStaleness() + res.getCaptureLatency() + res.getTargetingLatency();
+        long captureNs = now - (long) (ageMs * 1e6);
+        if (captureNs <= lastMoveNs + (long) (Tune.settleSec * 1e9)) return;
+
+        Double tx = readTx(res, true);
+        if (tx == null) return;
+
+        visionAngle = angleAt(captureNs) + AIM_SIGN * tx;
+        visionFresh = true;
     }
 
     /** SEMI_AIM: any tag. AIMING: only the goal tags, each with its own offset, averaged. */
@@ -310,9 +375,25 @@ public class Turret extends Mechanism {
         return histAngle[newer];
     }
 
+    private double center() {
+        return constants.WRAP_CENTER + Tune.centerTrimDeg;
+    }
+
+    private static double ratio() {
+        return Math.max(0.05, Math.abs(Tune.turretPerServo));
+    }
+
+    private static double rangeDeg() {
+        return SERVO_RANGE_DEG * ratio();
+    }
+
+    private static double slewDps() {
+        return Tune.servoSpeedDps * ratio();
+    }
+
     /** Turret angle (deg) -> servo position [0, 1]. */
     private double angleToServo(double angle) {
-        double pos = 0.5 + ((angle - constants.WRAP_CENTER) / TURRET_RANGE_DEG);
+        double pos = 0.5 + ((angle - center()) / rangeDeg());
         return posForServo(pos);
     }
 
@@ -322,13 +403,13 @@ public class Turret extends Mechanism {
     }
 
     private double minAngle() {
-        double servoMin = constants.WRAP_CENTER + (SERVO_MIN_POS - 0.5) * TURRET_RANGE_DEG;
-        return Math.max(servoMin, constants.WRAP_CENTER - constants.MAX_ANGLE / 2.0);
+        double servoMin = center() + (SERVO_MIN_POS - 0.5) * rangeDeg();
+        return Math.max(servoMin, center() - constants.MAX_ANGLE / 2.0);
     }
 
     private double maxAngle() {
-        double servoMax = constants.WRAP_CENTER + (SERVO_MAX_POS - 0.5) * TURRET_RANGE_DEG;
-        return Math.min(servoMax, constants.WRAP_CENTER + constants.MAX_ANGLE / 2.0);
+        double servoMax = center() + (SERVO_MAX_POS - 0.5) * rangeDeg();
+        return Math.min(servoMax, center() + constants.MAX_ANGLE / 2.0);
     }
 
     private double clampToLimits(double angle) {

@@ -7,6 +7,7 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.follower.ManualDrive;
 import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.Scheduler;
+import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
@@ -91,13 +92,16 @@ public class RobotOpMode extends OpMode {
     public Intake getIntake() { return intake; }
 
     public Follower getFollower() {
-        if (runtime.follower == null) {
-            runtime.update(null, null, null, Constants.create(runtime.hardwareMap));
+        if (follower == null) {
+            Pose carried = runtime.pose;
+
+            follower = Constants.create(runtime.hardwareMap);
+            if (carried != null) follower.setPose(carried);
+
+            runtime.update(null, null, null, follower);
         }
 
-        follower = runtime.follower;
-
-        return runtime.follower;
+        return follower;
     }
 
     public void setAlliance(Context.Alliance alliance) {

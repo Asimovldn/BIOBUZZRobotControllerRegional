@@ -18,7 +18,10 @@ public class ShotSolver {
     /** inches */
     public double offsetX = 2, offsetY = 0;
 
-    public int iterations = 6;
+    public int iterations = 16;
+
+    /** Damping of the time-of-flight iteration, 1 = plain fixed point. Keeps non monotonic tables stable. */
+    public double relaxation = 0.5;
 
     public ShotSolver(ShotTable table) {
         this.table = table;
@@ -41,12 +44,14 @@ public class ShotSolver {
         double ax = goalX, ay = goalY;
         double d = Math.hypot(ax - sx, ay - sy);
         ShotTable.Entry e = table.get(d);
+        double tof = e.tof;
 
         for (int i = 0; i < iterations; i++) {
-            ax = goalX - svx * e.tof;
-            ay = goalY - svy * e.tof;
+            ax = goalX - svx * tof;
+            ay = goalY - svy * tof;
             d = Math.hypot(ax - sx, ay - sy);
             e = table.get(d);
+            tof += relaxation * (e.tof - tof);
         }
 
         Solution s = new Solution();
@@ -56,7 +61,7 @@ public class ShotSolver {
         s.distance = d;
         s.velocity = e.velocity;
         s.hood = e.hood;
-        s.tof = e.tof;
+        s.tof = tof;
         s.aimX = ax;
         s.aimY = ay;
         return s;

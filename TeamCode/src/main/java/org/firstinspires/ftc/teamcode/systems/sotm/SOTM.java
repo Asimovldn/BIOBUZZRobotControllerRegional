@@ -1,10 +1,19 @@
 package org.firstinspires.ftc.teamcode.systems.sotm;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.math.Pose;
 
 import org.firstinspires.ftc.teamcode.util.Util;
 
 public class SOTM {
+    @Config
+    public static class Tune {
+        public static double biasGain = 0.25;
+        public static double maxBias = 30;
+        public static double stationarySpeed = 4;
+        public static double stationaryOmega = 0.15;
+    }
+
     public final ShotTable table = new ShotTable();
     public final ShotSolver solver = new ShotSolver(table);
 
@@ -20,10 +29,36 @@ public class SOTM {
     private double vx, vy, omega;
     private long lastNs;
     private boolean primed;
+    private double bias;
 
     public void reset() {
         primed = false;
         vx = vy = omega = 0;
+    }
+
+    public void resetBias() {
+        bias = 0;
+    }
+
+    public double bias() {
+        return bias;
+    }
+
+    /** visionAngle: turret angle (deg) the Limelight says points at the goal. Only learns while stationary. */
+    public boolean learnBias(double visionAngle, Pose pose, Pose goal) {
+        if (Tune.biasGain <= 0) return false;
+        if (speed() > Tune.stationarySpeed || Math.abs(omega) > Tune.stationaryOmega) return false;
+
+        double ideal = Util.wrapDeg(visionAngle - directTurretAngleDeg(pose, goal));
+        if (Math.abs(ideal) > Tune.maxBias) return false;
+
+        bias += Tune.biasGain * (ideal - bias);
+        return true;
+    }
+
+    public double directTurretAngleDeg(Pose pose, Pose goal) {
+        ShotSolver.Solution s = solver.solve(pose.x(), pose.y(), pose.heading(), 0, 0, 0, goal.x(), goal.y());
+        return rawTurretAngleDeg(s);
     }
 
     public void update(Pose pose) {
@@ -61,6 +96,10 @@ public class SOTM {
     }
 
     public double turretAngleDeg(ShotSolver.Solution s) {
+        return Util.wrapDeg(rawTurretAngleDeg(s) + bias);
+    }
+
+    private double rawTurretAngleDeg(ShotSolver.Solution s) {
         double rel = clockwisePositive ? s.launchHeading - s.fieldAngle : s.fieldAngle - s.launchHeading;
         return Util.wrapDeg(Math.toDegrees(rel));
     }

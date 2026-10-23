@@ -12,8 +12,11 @@ import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
 
+import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
+
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Locale;
 
 @TeleOp(name = "SOTM Red", group = "TeleOp")
 public class SOTMTeleOp extends RobotOpMode {
@@ -25,6 +28,7 @@ public class SOTMTeleOp extends RobotOpMode {
     private ShotSolver.Solution shot;
     private boolean sotmEnabled = true, spinEnabled = false;
     private double manualVelocity = 1300;
+    private String lastLog = "";
 
     /** Only used when the runtime has no pose yet (OpMode started without an Auto before it). */
     public Pose startPose() {
@@ -33,7 +37,6 @@ public class SOTMTeleOp extends RobotOpMode {
 
     @Override
     public void create() {
-        getTurret().reset();
         if (runtime.pose == null) getFollower().setPose(startPose());
 
         fill();
@@ -61,6 +64,10 @@ public class SOTMTeleOp extends RobotOpMode {
         sotm.update(pose);
 
         Pose goal = goal();
+
+        Double visionAngle = getTurret().consumeVisionAngle();
+        if (visionAngle != null && goal != null && sotmEnabled) sotm.learnBias(visionAngle, pose, goal);
+
         shot = goal == null ? null : sotm.solve(pose, goal);
         boolean hasShot = shot != null && shot.valid;
 
@@ -99,11 +106,13 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad2.yWasPressed()) {
             getTurret().reset();
             sotm.reset();
+            sotm.resetBias();
             gamepad2.rumbleBlips(2);
+        }
 
-            try (FileWriter f = new FileWriter("table.txt", true)) {
-                f.write("Distance: " + String.valueOf(shot.distance) + ", Velocity: " + String.valueOf(shot.velocity) + ";\n");
-            } catch (IOException ignored) {}
+        if (gamepad2.dpadRightWasPressed()) {
+            logShot();
+            gamepad2.rumbleBlips(1);
         }
 
         if (gamepad2.bWasPressed()) {
@@ -120,6 +129,8 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Speed (in/s)", sotm.speed());
         telemetry.addData("Omega (rad/s)", sotm.omega());
         telemetry.addData("Servo ", getTurret().getServoPosition());
+        telemetry.addData("Vision bias", sotm.bias());
+        telemetry.addData("Logged", lastLog);
 
         if (hasShot) {
             telemetry.addData("Distance", shot.distance);
@@ -134,6 +145,19 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Flywheel target", getShooter().getTargetVelocity());
         telemetry.addData("Ready", ready);
         telemetry.update();
+    }
+
+    private void logShot() {
+        if (shot == null || !shot.valid) return;
+
+        String line = String.format(Locale.US, "sotm.table.add(%.1f, %.0f, 0, %.2f);", shot.distance, manualVelocity, shot.tof);
+
+        try (FileWriter f = new FileWriter(AppUtil.getInstance().getSettingsFile("shot_table.txt"), true)) {
+            f.write(line + "\n");
+            lastLog = line;
+        } catch (IOException e) {
+            lastLog = "log failed: " + e.getMessage();
+        }
     }
 
     private Pose goal() {
