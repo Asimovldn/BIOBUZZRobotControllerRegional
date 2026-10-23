@@ -33,10 +33,10 @@ public class Turret extends Mechanism {
 
     @Config
     public static class Tune {
-        public static double aimGain = 0.5;
+        public static double aimGain = 0.7;
         public static double aimDeadbandDeg = 1.5;
-        public static double maxSlewDps = 190.0;
-        public static double settleSec = 0.13;
+        public static double maxSlewDps = 280.0;
+        public static double settleSec = 0.08;
     }
 
     private static final String SERVO_NAME = "turret";
@@ -59,7 +59,6 @@ public class Turret extends Mechanism {
     public int[] readingTag = new int[4];
     public boolean calledPeriodic = false;
 
-    /** Modelled turret angle (deg) = last commanded angle. */
     public double currentAngle;
 
     private final Context.TurretConstants constants = new Context.TurretConstants();
@@ -224,8 +223,6 @@ public class Turret extends Mechanism {
         record(now, currentAngle);
     }
 
-    // ------------------------------------------------------------------ aiming
-
     /** Returns the goal angle. wrap = false is SEMI_AIM (clamped to the limits, no wrapping). */
     private double aim(boolean wrap) {
         LLResult res = limelight.getLatestResult();
@@ -249,7 +246,7 @@ public class Turret extends Mechanism {
         return wrap ? wrapToSafeRange(targetAngle) : clampToLimits(targetAngle);
     }
 
-    /** SEMI_AIM: any tag (LLResult tx). AIMING: only the goal tags, each with its own offset, averaged. */
+    /** SEMI_AIM: any tag. AIMING: only the goal tags, each with its own offset, averaged. */
     private Double readTx(LLResult res, boolean onlyGoalTags) {
         if (!onlyGoalTags || alliance == null) return res.getTx();
 
@@ -287,8 +284,6 @@ public class Turret extends Mechanism {
         return false;
     }
 
-    // ------------------------------------------------------------------ angle history
-
     private void record(long ns, double angle) {
         histNs[histHead] = ns;
         histAngle[histHead] = angle;
@@ -315,11 +310,9 @@ public class Turret extends Mechanism {
         return histAngle[newer];
     }
 
-    // ------------------------------------------------------------------ geometry helpers
-
-    /** Turret angle (deg) -> servo position (0..1). */
+    /** Turret angle (deg) -> servo position [0, 1]. */
     private double angleToServo(double angle) {
-        double pos = 0.5 + (angle - constants.WRAP_CENTER) / TURRET_RANGE_DEG;
+        double pos = 0.5 + ((angle - constants.WRAP_CENTER) / TURRET_RANGE_DEG);
         return posForServo(pos);
     }
 

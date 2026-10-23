@@ -15,8 +15,8 @@ public class ShotSolver {
     /** seconds between the pose sample and the ball leaving the shooter. */
     public double latency = 0.06;
 
-    /** shooter pivot offset from the robot center, robot frame (x forward, y left), inches. */
-    public double offsetX = 0, offsetY = 0;
+    /** inches */
+    public double offsetX = 2, offsetY = 0;
 
     public int iterations = 6;
 

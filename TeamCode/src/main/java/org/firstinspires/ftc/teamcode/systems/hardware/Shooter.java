@@ -17,11 +17,11 @@ import org.firstinspires.ftc.teamcode.util.PIDFController;
 public class Shooter extends Mechanism {
     @Config
     public static class Tuning {
-        public static double kP = 0.001, kI = 0, kD = 0;
-        public static double kV = 0.00036, kS = 0;
-        public static double readyTolerance = 60;
-        public static double feedPower = -0.8;
-        public static double nominalVoltage = 12.0;
+        public static double kP = 0.01, kI = 0, kD = 0.002;
+        public static double kV = 0.00036, kS = 0, kF = 0;
+        public static double readyTolerance = 70;
+        public static double feedPower = -0.9;
+        public static double nominalVoltage = 12.5;
     }
 
     private DcMotorEx flywheel, feeder;
@@ -67,7 +67,7 @@ public class Shooter extends Mechanism {
         spinning = true;
         updateVoltage();
 
-        pid.setGains(Tuning.kP, Tuning.kI, Tuning.kD, 0);
+        pid.setGains(Tuning.kP, Tuning.kI, Tuning.kD, Tuning.kF);
         if (Tuning.kI > 0) pid.setIntegralClamp(0.3 / Tuning.kI);
 
         double error = targetVelocity - flywheel.getVelocity();
@@ -80,7 +80,7 @@ public class Shooter extends Mechanism {
 
     private void updateVoltage() {
         long now = System.nanoTime();
-        if (battery == null || now - lastVoltageNs < 250_000_000L) return;
+        if (battery == null || now - lastVoltageNs < 250_000_000L) return; // Runs around 4 times per second
 
         lastVoltageNs = now;
         double v = battery.getVoltage();

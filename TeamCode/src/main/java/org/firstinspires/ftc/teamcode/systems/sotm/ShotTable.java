@@ -4,6 +4,7 @@ import static org.firstinspires.ftc.teamcode.util.Util.lerp;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class ShotTable {
@@ -33,7 +34,7 @@ public class ShotTable {
     /** distance in inches, velocity in flywheel ticks/s, tof in seconds. */
     public ShotTable add(double distance, double velocity, double hood, double tof) {
         rows.add(new Row(distance, new Entry(velocity, hood, tof)));
-        Collections.sort(rows, (a, b) -> Double.compare(a.distance, b.distance));
+        rows.sort(Comparator.comparingDouble(a -> a.distance));
         return this;
     }
 

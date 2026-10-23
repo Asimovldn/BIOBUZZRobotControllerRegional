@@ -71,7 +71,7 @@ public class RedCalibrate extends RobotOpMode {
         telemetry.addData("Flywheel (ticks/s): ", getShooter().Speed());
 
         if (Math.abs(strength) > 0) {
-            getShooter().setTargetVelocity(target * gamepad2.left_trigger);
+            getShooter().setTargetVelocity(-target * gamepad2.left_trigger);
         } else {
             getShooter().fullBrake().execute();
             getTurret().editGain(0.4);

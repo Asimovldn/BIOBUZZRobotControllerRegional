@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleop;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -10,19 +12,23 @@ import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
 
+import java.io.FileWriter;
+import java.io.IOException;
+
 @TeleOp(name = "SOTM Red", group = "TeleOp")
 public class SOTMTeleOp extends RobotOpMode {
     private static final double READY_TURRET_DEG = 1.5;
 
     protected final SOTM sotm = new SOTM();
+    protected boolean manualOnly = false;
 
     private ShotSolver.Solution shot;
     private boolean sotmEnabled = true, spinEnabled = false;
-    private double manualVelocity = 1500;
+    private double manualVelocity = 1300;
 
     /** Only used when the runtime has no pose yet (OpMode started without an Auto before it). */
     public Pose startPose() {
-        return Context.autonomousEnd;
+        return new Pose(59, 8, Math.toRadians(90));
     }
 
     @Override
@@ -30,7 +36,14 @@ public class SOTMTeleOp extends RobotOpMode {
         getTurret().reset();
         if (runtime.pose == null) getFollower().setPose(startPose());
 
-        // sotm.table.add(distanceIn, flywheelTicksPerSec, hood, flightSeconds);
+        fill();
+    }
+
+    public void fill() {
+        sotm.table.add(85, 1300, 0, 1);
+        sotm.table.add(33, 1100, 0, 0.65);
+        sotm.table.add(73, 1250, 0, 0.4);
+        sotm.table.add(54, 1150, 0, 0.8);
     }
 
     @Override
@@ -38,6 +51,8 @@ public class SOTMTeleOp extends RobotOpMode {
         Scheduler.reset();
         sotm.reset();
         getTurret().setMode(Turret.Mode.TRACK);
+
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
     }
 
     @Override
@@ -61,10 +76,12 @@ public class SOTMTeleOp extends RobotOpMode {
 
         if (gamepad2.dpadUpWasPressed()) manualVelocity += 50;
         if (gamepad2.dpadDownWasPressed()) manualVelocity -= 50;
-        if (gamepad2.xWasPressed()) spinEnabled = !spinEnabled;
+        if (gamepad2.leftTriggerWasPressed()) spinEnabled = !spinEnabled;
+        if (gamepad2.leftTriggerWasReleased()) spinEnabled = !spinEnabled;
+        if (gamepad2.dpadLeftWasPressed()) manualOnly = !manualOnly;
 
-        double velocity = !sotm.table.isEmpty() && hasShot ? shot.velocity : manualVelocity;
-        getShooter().setTargetVelocity(spinEnabled ? velocity : 0);
+        double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
+        getShooter().setTargetVelocity(spinEnabled ? -velocity : 0);
 
         getIntake().setThrottle(gamepad2.left_stick_y);
 
@@ -83,6 +100,10 @@ public class SOTMTeleOp extends RobotOpMode {
             getTurret().reset();
             sotm.reset();
             gamepad2.rumbleBlips(2);
+
+            try (FileWriter f = new FileWriter("table.txt", true)) {
+                f.write("Distance: " + String.valueOf(shot.distance) + ", Velocity: " + String.valueOf(shot.velocity) + ";\n");
+            } catch (IOException ignored) {}
         }
 
         if (gamepad2.bWasPressed()) {
@@ -98,6 +119,7 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Pose", pose);
         telemetry.addData("Speed (in/s)", sotm.speed());
         telemetry.addData("Omega (rad/s)", sotm.omega());
+        telemetry.addData("Servo ", getTurret().getServoPosition());
 
         if (hasShot) {
             telemetry.addData("Distance", shot.distance);

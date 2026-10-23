@@ -1,0 +1,19 @@
+# 1 flywheel, torreta desalinhada.
+dist = 42
+vel = 1070
+
+dist = 54
+vel = 1150
+
+dist = 74
+vel = 1250
+
+# 2 flywheel(s), torreta desalinhada.
+dis = 73
+vel = 1250
+
+dist = 33
+vel = 1100
+
+dist = 85
+vel = 1300
