@@ -16,12 +16,12 @@ public class ShotSolver {
     public double latency = 0.06;
 
     /** inches */
-    public double offsetX = 2, offsetY = 0;
+    public double offsetX = 0.8, offsetY = 0;
 
     public int iterations = 16;
 
-    /** Damping of the time-of-flight iteration, 1 = plain fixed point. Keeps non monotonic tables stable. */
-    public double relaxation = 0.5;
+    /** Damping of the time-of-flight iteration */
+    public double damp = 0.5;
 
     public ShotSolver(ShotTable table) {
         this.table = table;
@@ -51,7 +51,7 @@ public class ShotSolver {
             ay = goalY - svy * tof;
             d = Math.hypot(ax - sx, ay - sy);
             e = table.get(d);
-            tof += relaxation * (e.tof - tof);
+            tof += damp * (e.tof - tof);
         }
 
         Solution s = new Solution();
