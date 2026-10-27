@@ -52,10 +52,10 @@ public class RedSoloA extends Auto {
                 instant(() -> getTurret().setMode(Turret.Mode.OFF)),
                 shooter.disableLaunch(),
                 shooter.fullBrake(),
-                follow(getFollower(), paths.toGarden),
+                follow(getFollower(), Operator.get("toGarden")),
                 instant(() -> getTurret().setMode(Turret.Mode.TRACK)),
                 instant(() -> runtime.switchLocation()),
-                follow(getFollower(), paths.toScoringRed)
+                follow(getFollower(), Operator.get("toScoringRed"))
         );
     }
 }

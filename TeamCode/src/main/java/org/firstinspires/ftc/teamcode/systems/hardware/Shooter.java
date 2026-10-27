@@ -17,16 +17,16 @@ import org.firstinspires.ftc.teamcode.util.PIDFController;
 public class Shooter extends Mechanism {
     @Config
     public static class Tuning {
-        public static double feedPower = -0.95;
+        public static double feedPower = -0.65;
         public static double kD = 0;
         public static double kF = 0;
         public static double kI = 0;
         public static double kP = 0.006;
         public static double kS = 0.01;
         public static double kV = 0.00048;
-        public static double maxOvershoot = 18;
+        public static double maxOvershoot = 19;
         public static double nominalVoltage = 12.7;
-        public static double readyTolerance = 24;
+        public static double readyTolerance = 28;
     }
 
     private DcMotorEx flywheel, feeder;
@@ -80,7 +80,7 @@ public class Shooter extends Mechanism {
                 + Tuning.kS * Math.signum(targetVelocity)
                 + pid.calculate(error);
 
-        flywheel.setPower(Range.clip(output * voltageScale, -1, 1));
+        flywheel.setVelocity(output);
     }
 
     private void updateVoltage() {

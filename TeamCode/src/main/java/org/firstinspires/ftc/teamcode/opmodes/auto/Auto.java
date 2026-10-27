@@ -20,10 +20,12 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+
 @Autonomous
 public class Auto extends RobotOpMode {
     private static final Logger log = LoggerFactory.getLogger(Auto.class);
-    PathBuilder paths;
+    Operator paths;
 
     @Override
     public void init() {
@@ -51,7 +53,7 @@ public class Auto extends RobotOpMode {
             mech.setup();
         }
 
-        paths = new PathBuilder();
+        paths = new Operator();
         paths.mirrorPose(runtime);
         paths.build();
 
@@ -87,7 +89,7 @@ public class Auto extends RobotOpMode {
         return null;
     }
 
-    public static class PathBuilder {
+    public static class Operator {
         private PoseFactory poseFactory = PoseFactory.degrees();
         public PoseFactory getFactory() {
             return poseFactory;
@@ -107,16 +109,24 @@ public class Auto extends RobotOpMode {
             gardenPose = poseFactory.of(9, 7, 180);
             parkPoseA = poseFactory.of(133, 30, 180);
             scoringRed = poseFactory.of(45, 120, 270);
+
+            register("toGarden", line(startPoseA, gardenPose).facingPoint(gardenPose));
+            register("toScoringRed", line(gardenPose, scoringRed).linear(gardenPose, scoringRed));
         }
+
+        public static void register(String name, Path path) {
+            getter.put(name, path);
+        }
+
+        public static Path get(String name) {
+            return getter.get(name);
+        }
+
+        private static final HashMap<String, Path> getter = new HashMap<>();
 
         public Pose startPoseA;
         public Pose parkPoseA;
         public Pose gardenPose, scoringRed;
-
-        // Insert Paths Below
-
-        public Path toGarden = line(startPoseA, gardenPose).facingPoint(gardenPose);
-        public Path toScoringRed = line(gardenPose, scoringRed).linear(gardenPose, scoringRed);
     }
 
     @Override

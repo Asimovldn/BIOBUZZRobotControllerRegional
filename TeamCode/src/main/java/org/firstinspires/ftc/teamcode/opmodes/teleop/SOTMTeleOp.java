@@ -4,6 +4,9 @@ import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.math.Pose;
+import com.pedropathing.math.Velocity;
+import com.pedropathing.revhub.localizers.PinpointLocalizer;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Context;
@@ -75,6 +78,7 @@ public class SOTMTeleOp extends RobotOpMode {
         Pose pose = follower.pose();
         Velocity vel = follower.velocity();
         sotm.update(pose, vel);
+
 
         Pose goal = goal();
 
