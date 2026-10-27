@@ -80,7 +80,7 @@ public class Shooter extends Mechanism {
                 + Tuning.kS * Math.signum(targetVelocity)
                 + pid.calculate(error);
 
-        flywheel.setVelocity(output);
+        flywheel.setPower(Range.clip(output, -1, 1));
     }
 
     private void updateVoltage() {
