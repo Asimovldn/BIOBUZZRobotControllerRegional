@@ -73,7 +73,8 @@ public class SOTMTeleOp extends RobotOpMode {
     @Override
     public void periodic() {
         Pose pose = follower.pose();
-        sotm.update(pose);
+        Velocity vel = follower.velocity();
+        sotm.update(pose, vel);
 
         Pose goal = goal();
 

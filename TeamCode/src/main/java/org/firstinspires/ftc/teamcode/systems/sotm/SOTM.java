@@ -5,6 +5,8 @@ import com.pedropathing.math.Pose;
 
 import org.firstinspires.ftc.teamcode.util.Util;
 
+import com.pedropathing.math.Velocity;
+
 public class SOTM {
     @Config
     public static class Tune {
@@ -63,6 +65,18 @@ public class SOTM {
 
     public void update(Pose pose) {
         update(pose.x(), pose.y(), pose.heading(), System.nanoTime());
+    }
+
+    public void update(Pose pose, Velocity velocity) {
+        lastX = pose.x();
+        lastY = pose.y();
+        lastH = pose.heading();
+        lastNs = System.nanoTime();
+        primed = true;
+
+        vx = velocity.vx;
+        vy = velocity.vy;
+        omega = velocity.omega;
     }
 
     public void update(double x, double y, double heading, long nowNs) {
