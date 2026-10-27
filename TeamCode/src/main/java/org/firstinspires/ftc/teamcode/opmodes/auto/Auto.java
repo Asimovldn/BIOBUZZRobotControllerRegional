@@ -1,14 +1,12 @@
 package org.firstinspires.ftc.teamcode.opmodes.auto;
 
-import static com.pedropathing.ivy.commands.Commands.waitMs;
-import static com.pedropathing.ivy.commands.Commands.waitUntil;
-import static com.pedropathing.ivy.groups.Groups.sequential;
+import static com.pedropathing.api.Paths.line;
 
 import com.pedropathing.api.PoseFactory;
-import com.pedropathing.follower.Follower;
-import com.pedropathing.ivy.CommandBuilder;
+import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.math.Pose;
+import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.Context;
@@ -18,12 +16,13 @@ import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.util.LazyDrive;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Autonomous
-public class AutoOpMode extends RobotOpMode {
-    private static final Logger log = LoggerFactory.getLogger(AutoOpMode.class);
+public class Auto extends RobotOpMode {
+    private static final Logger log = LoggerFactory.getLogger(Auto.class);
     PathBuilder paths;
 
     @Override
@@ -63,6 +62,10 @@ public class AutoOpMode extends RobotOpMode {
     public void start() {
         Scheduler.reset();
 
+        if (routine() != null) {
+            Scheduler.schedule(routine());
+        }
+
         setup();
         follower.update();
     }
@@ -77,6 +80,11 @@ public class AutoOpMode extends RobotOpMode {
         Scheduler.execute();
 
         runtime.update(getAlliance(), null, follower.pose(), follower);
+    }
+
+    @Nullable
+    public Command routine() {
+        return null;
     }
 
     public static class PathBuilder {
@@ -95,14 +103,25 @@ public class AutoOpMode extends RobotOpMode {
         // Make Poses Below
 
         public void build() {
-            startPoseA = poseFactory.of(83, 8.65, 90);
+            startPoseA = poseFactory.of(59, 8, 90);
+            gardenPose = poseFactory.of(9, 7, 180);
             parkPoseA = poseFactory.of(133, 30, 180);
+            scoringRed = poseFactory.of(45, 120, 270);
         }
 
         public Pose startPoseA;
         public Pose parkPoseA;
+        public Pose gardenPose, scoringRed;
 
         // Insert Paths Below
 
+        public Path toGarden = line(startPoseA, gardenPose).facingPoint(gardenPose);
+        public Path toScoringRed = line(gardenPose, scoringRed).linear(gardenPose, scoringRed);
+    }
+
+    @Override
+    public void stop() {
+        Context.autonomousEnd = follower.pose();
+        runtime.follower = null;
     }
 }

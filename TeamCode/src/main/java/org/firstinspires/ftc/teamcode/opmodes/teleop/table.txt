@@ -1,19 +1,28 @@
-# 1 flywheel, torreta desalinhada.
-dist = 42
-vel = 1070
+c3q
+dist = 58
+vel  = 1190
+hood = 29
 
-dist = 54
-vel = 1150
+dist = 60
+vel  = 1210
+hood = 32
 
-dist = 74
-vel = 1250
+dist = 64.5
+vel  = 1230
+hood = 37
 
-# 2 flywheel(s), torreta desalinhada.
-dis = 73
-vel = 1250
+dist = 55
+vel  = 1240
+hood = 27
 
-dist = 33
-vel = 1100
+dist = 43.7
+vel  = 1190
+hood = 23
+flight time = 0.51
 
-dist = 85
-vel = 1300
+dist = 82
+vel  = 1270
+hood = 34.5
+
+TEORIA:
+A cada 2 inches, ganha-se 10 ticks/s e 2º.

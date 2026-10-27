@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.RobotOpMode;
+import org.firstinspires.ftc.teamcode.pedro.Drawing;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
@@ -22,8 +23,13 @@ import java.util.Locale;
 public class SOTMTeleOp extends RobotOpMode {
     private static final double READY_TURRET_DEG = 1.5;
 
+    private static final Pose resetPoseA = new Pose(10, 132, Math.toRadians(270));
+    private static final Pose resetPoseB = new Pose(59, 8, Math.toRadians(90));
+
     protected final SOTM sotm = new SOTM();
     protected boolean manualOnly = false;
+
+    protected double currAngle = 20;
 
     private ShotSolver.Solution shot;
     private boolean sotmEnabled = true, spinEnabled = false;
@@ -32,6 +38,10 @@ public class SOTMTeleOp extends RobotOpMode {
 
     /** Only used when the runtime has no pose yet (OpMode started without an Auto before it). */
     public Pose startPose() {
+        if (Context.autonomousEnd == Pose.zero()) {
+            return Context.autonomousEnd;
+        };
+
         return new Pose(59, 8, Math.toRadians(90));
     }
 
@@ -43,10 +53,10 @@ public class SOTMTeleOp extends RobotOpMode {
     }
 
     public void fill() {
-        sotm.table.add(85, 1300, 0, 1);
-        sotm.table.add(33, 1100, 0, 0.65);
-        sotm.table.add(73, 1250, 0, 0.4);
-        sotm.table.add(54, 1150, 0, 0.8);
+        sotm.table.add(82, 1270, 34.5, 1);
+        sotm.table.add(43, 1190, 23, 0.3);
+        sotm.table.add(64.5, 1230, 37, 0.8);
+        sotm.table.add(55, 1240, 27, 0.65);
     }
 
     @Override
@@ -54,6 +64,8 @@ public class SOTMTeleOp extends RobotOpMode {
         Scheduler.reset();
         sotm.reset();
         getTurret().setMode(Turret.Mode.TRACK);
+
+        Drawing.init();
 
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
     }
@@ -81,11 +93,20 @@ public class SOTMTeleOp extends RobotOpMode {
             getTurret().setTrackAngle(sotm.turretAngleDeg(shot));
         }
 
-        if (gamepad2.dpadUpWasPressed()) manualVelocity += 50;
-        if (gamepad2.dpadDownWasPressed()) manualVelocity -= 50;
+        if (gamepad2.dpadUpWasPressed()) manualVelocity += 10;
+        if (gamepad2.dpadDownWasPressed()) manualVelocity -= 10;
+
+        if (gamepad2.dpadLeftWasPressed()) currAngle--;
+        if (gamepad2.dpadRightWasPressed()) currAngle++;
+
         if (gamepad2.leftTriggerWasPressed()) spinEnabled = !spinEnabled;
         if (gamepad2.leftTriggerWasReleased()) spinEnabled = !spinEnabled;
-        if (gamepad2.dpadLeftWasPressed()) manualOnly = !manualOnly;
+        if (gamepad2.leftBumperWasPressed()) manualOnly = !manualOnly;
+
+        if (gamepad1.aWasPressed()) getFollower().setPose(resetPoseB);
+        if (gamepad1.bWasPressed()) getFollower().setPose(resetPoseA);
+
+        hood.setServoToPoses(hood.angleToServo(!sotm.table.isEmpty() && hasShot && !manualOnly ? shot.hood : currAngle));
 
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
         getShooter().setTargetVelocity(spinEnabled ? -velocity : 0);
@@ -144,7 +165,10 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Flywheel", getShooter().Speed());
         telemetry.addData("Flywheel target", getShooter().getTargetVelocity());
         telemetry.addData("Ready", ready);
+        telemetry.addData("Angle: ", currAngle);
         telemetry.update();
+
+        Drawing.drawDebug(follower);
     }
 
     private void logShot() {

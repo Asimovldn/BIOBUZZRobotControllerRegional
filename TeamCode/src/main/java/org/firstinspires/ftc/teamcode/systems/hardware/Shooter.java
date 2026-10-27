@@ -17,11 +17,16 @@ import org.firstinspires.ftc.teamcode.util.PIDFController;
 public class Shooter extends Mechanism {
     @Config
     public static class Tuning {
-        public static double kP = 0.01, kI = 0, kD = 0.002;
-        public static double kV = 0.00036, kS = 0, kF = 0;
-        public static double readyTolerance = 70;
-        public static double feedPower = -0.9;
-        public static double nominalVoltage = 12.5;
+        public static double feedPower = -0.95;
+        public static double kD = 0;
+        public static double kF = 0;
+        public static double kI = 0;
+        public static double kP = 0.006;
+        public static double kS = 0.01;
+        public static double kV = 0.00048;
+        public static double maxOvershoot = 18;
+        public static double nominalVoltage = 12.7;
+        public static double readyTolerance = 24;
     }
 
     private DcMotorEx flywheel, feeder;
@@ -67,7 +72,7 @@ public class Shooter extends Mechanism {
         spinning = true;
         updateVoltage();
 
-        pid.setGains(Tuning.kP, Tuning.kI, Tuning.kD, Tuning.kF);
+        pid.setGains(Tuning.kP, Tuning.kI, Tuning.kD, 0);
         if (Tuning.kI > 0) pid.setIntegralClamp(0.3 / Tuning.kI);
 
         double error = targetVelocity - flywheel.getVelocity();
@@ -88,12 +93,15 @@ public class Shooter extends Mechanism {
     }
 
     public boolean isReady() {
-        return targetVelocity != 0 && atSpeed(targetVelocity, Tuning.readyTolerance);
+        return targetVelocity != 0 && atSpeed(targetVelocity, Tuning.readyTolerance) && !(Math.abs(Speed()) > Math.abs(targetVelocity) && Math.abs(Speed()) - Math.abs(targetVelocity) < Tuning.maxOvershoot);
     }
 
     public Command enableLaunch() {
         return Command.build()
-                .setExecute(() -> feeder.setPower(Tuning.feedPower))
+                .setExecute(() -> {
+                    if (!isReady()) return;
+                    feeder.setPower(Tuning.feedPower);
+                })
                 .requiring(this);
     }
 

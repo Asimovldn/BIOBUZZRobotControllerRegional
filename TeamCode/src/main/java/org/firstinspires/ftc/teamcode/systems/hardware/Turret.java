@@ -50,12 +50,12 @@ public class Turret extends Mechanism {
     }
 
     private static final String SERVO_NAME = "turret";
-    private static final int SERVO_RANGE_DEG = 300;
+    private static final int SERVO_RANGE_DEG = 320;
 
     private static final double PWM_MIN_US = 500, PWM_MAX_US = 2500;
-    private static final double SERVO_MIN_POS = 0.005, SERVO_MAX_POS = 0.995;
+    private static final double SERVO_MIN_POS = 0, SERVO_MAX_POS = 1;
     private static final double SERVO_WRITE_EPS = 0.001;
-    private static final boolean SERVO_REVERSED = true;
+    private static final boolean SERVO_REVERSED = false;
     private static final double AIM_SIGN = 1.0;
 
     private static final int HISTORY = 64;
@@ -101,8 +101,6 @@ public class Turret extends Mechanism {
     }
 
     public void reset() {
-        servo.setPwmDisable();
-
         limelight.stop();
         limelight.pipelineSwitch(0);
         limelight.setPollRateHz(100);
@@ -307,7 +305,7 @@ public class Turret extends Mechanism {
         Double tx = readTx(res, true);
         if (tx == null) return;
 
-        visionAngle = angleAt(captureNs) + AIM_SIGN * tx;
+        visionAngle = angleAt(captureNs) + tx * AIM_SIGN;
         visionFresh = true;
     }
 
@@ -380,7 +378,7 @@ public class Turret extends Mechanism {
     }
 
     public static double ratio() {
-        Math.abs(Tune.turretPerServo);
+        return Math.abs(Tune.turretPerServo);
     }
 
     private static double rangeDeg() {
