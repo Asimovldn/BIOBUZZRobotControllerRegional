@@ -40,10 +40,8 @@ public class Turret extends Mechanism {
         /** Servo shaft speed in deg/s. The turret slews at this times turretPerServo. */
         public static double servoSpeedDps = 280.0;
 
-        /** Turret degrees per servo degree. 1.0 = direct drive, 0.5 = servo gear drives a gear twice its size. */
         public static double turretPerServo = 1.0;
 
-        /** just in case the engineering team messes with the gear positions, adjust by degree offset */
         public static double centerTrimDeg = 0.0;
 
         public static double trackLeadSec = 0.04;
