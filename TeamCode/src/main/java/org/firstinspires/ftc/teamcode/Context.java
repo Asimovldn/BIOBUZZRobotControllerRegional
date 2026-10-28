@@ -57,10 +57,10 @@ public class Context {
                 }
             } else if (ctx.GlobalAlliance == Alliance.RED) {
                 if (compare(ctx.location, "Audience")) {
-                    return new Pose(63.5, 55);
+                    return new Pose(58.5, 55);
                 }
                 else if (compare(ctx.location, "Scoring")) {
-                    return new Pose(63.5, 91);
+                    return new Pose(61.5, 93);
                 }
             }
 
