@@ -35,7 +35,7 @@ public class run extends LinearOpMode {
                     servo.setPosition(1);
                 }
             } else {
-                hood.setServoToPoses(hood.angleToServo(currAngle));
+                hood.fromAngle(currAngle);
 
                 if (gamepad2.dpadUpWasPressed()) currAngle++;
                 if (gamepad2.dpadDownWasPressed()) currAngle--;

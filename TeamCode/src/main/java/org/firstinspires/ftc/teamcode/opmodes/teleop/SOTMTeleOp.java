@@ -111,7 +111,7 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad1.aWasPressed()) getFollower().setPose(resetPoseB);
         if (gamepad1.bWasPressed()) getFollower().setPose(resetPoseA);
 
-        hood.setServoToPoses(hood.angleToServo(!sotm.table.isEmpty() && hasShot && !manualOnly ? shot.hood : currAngle));
+        hood.fromAngle(!sotm.table.isEmpty() && hasShot && !manualOnly ? shot.hood : currAngle);
 
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
         getShooter().setTargetVelocity(spinEnabled ? -velocity : 0);
