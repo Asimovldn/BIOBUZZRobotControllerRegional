@@ -22,7 +22,7 @@ public class Shooter extends Mechanism {
         public static double kF = 0;
         public static double kI = 0;
         public static double kP = 0.006;
-        public static double kS = 0.01;
+        public static double kS = 0;
         public static double kV = 0.00048;
         public static double maxOvershoot = 19;
         public static double nominalVoltage = 12.7;
@@ -74,6 +74,10 @@ public class Shooter extends Mechanism {
 
         pid.setGains(Tuning.kP, Tuning.kI, Tuning.kD, 0);
         if (Tuning.kI > 0) pid.setIntegralClamp(0.3 / Tuning.kI);
+
+        if (battery.getVoltage() < 11.4) {
+            Tuning.readyTolerance *= 2; // increases tolerance on VERY low battery cases.
+        }
 
         double error = targetVelocity - flywheel.getVelocity();
         double output = Tuning.kV * targetVelocity
