@@ -75,9 +75,6 @@ public class Shooter extends Mechanism {
         pid.setGains(Tuning.kP, Tuning.kI, Tuning.kD, 0);
         if (Tuning.kI > 0) pid.setIntegralClamp(0.3 / Tuning.kI);
 
-        if (battery.getVoltage() < 11.4) {
-            Tuning.readyTolerance *= 2; // increases tolerance on VERY low battery cases.
-        }
 
         double error = targetVelocity - flywheel.getVelocity();
         double output = Tuning.kV * targetVelocity
@@ -97,7 +94,7 @@ public class Shooter extends Mechanism {
     }
 
     public boolean isReady() {
-        return targetVelocity != 0 && atSpeed(targetVelocity, Tuning.readyTolerance) && !(Math.abs(Speed()) > Math.abs(targetVelocity) && Math.abs(Speed()) - Math.abs(targetVelocity) < Tuning.maxOvershoot);
+        return targetVelocity != 0 && atSpeed(targetVelocity, battery.getVoltage() < 11.3 ? Tuning.readyTolerance * 2 : Tuning.readyTolerance) && !(Math.abs(Speed()) > Math.abs(targetVelocity) && Math.abs(Speed()) - Math.abs(targetVelocity) < Tuning.maxOvershoot);
     }
 
     public Command enableLaunch() {
