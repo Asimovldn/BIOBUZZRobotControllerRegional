@@ -50,7 +50,7 @@ public class Turret extends Mechanism {
     }
 
     private static final String SERVO_NAME = "turret";
-    private static final int SERVO_RANGE_DEG = 320;
+    private static final int SERVO_RANGE_DEG = 300;
 
     private static final double PWM_MIN_US = 500, PWM_MAX_US = 2500;
     private static final double SERVO_MIN_POS = 0, SERVO_MAX_POS = 1;
@@ -103,7 +103,6 @@ public class Turret extends Mechanism {
     public void reset() {
         limelight.stop();
         limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(100);
         limelight.start();
         limelight.reloadPipeline();
 
