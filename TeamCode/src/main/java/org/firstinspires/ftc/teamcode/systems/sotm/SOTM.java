@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.systems.sotm;
 import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.math.Pose;
 
+import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.util.Util;
 
 import com.pedropathing.math.Velocity;
@@ -14,6 +15,10 @@ public class SOTM {
         public static double maxBias = 30;
         public static double stationarySpeed = 4;
         public static double stationaryOmega = 0.15;
+
+        /** Inches the aim point moves away from the robot's side per inch the robot is off the hive axis. */
+        public static double lateralBiasPerIn = 0.08;
+        public static double lateralBiasMaxIn = 4;
     }
 
     public final ShotTable table = new ShotTable();
@@ -106,7 +111,17 @@ public class SOTM {
     }
 
     public ShotSolver.Solution solve(Pose pose, Pose goal) {
-        return solver.solve(pose.x(), pose.y(), pose.heading(), vx, vy, omega, goal.x(), goal.y());
+        Pose aim = biasedGoal(pose, goal);
+        return solver.solve(pose.x(), pose.y(), pose.heading(), vx, vy, omega, aim.x(), aim.y());
+    }
+
+    /** Robot on the right of the hive opening (looking at it from outside) aims further left, and the mirror image. */
+    public static Pose biasedGoal(Pose pose, Pose goal) {
+        double right = goal.y() < Context.FIELD_CENTER ? 1 : -1;
+        double lateral = (pose.x() - goal.x()) * right;
+        double shift = Math.max(-Tune.lateralBiasMaxIn, Math.min(Tune.lateralBiasMaxIn, Tune.lateralBiasPerIn * lateral));
+
+        return new Pose(goal.x() - right * shift, goal.y());
     }
 
     public double turretAngleDeg(ShotSolver.Solution s) {

@@ -14,7 +14,9 @@ import org.firstinspires.ftc.teamcode.RobotOpMode;
 import org.firstinspires.ftc.teamcode.pedro.Drawing;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
+import org.firstinspires.ftc.teamcode.systems.sotm.ShotData;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
+import org.firstinspires.ftc.teamcode.util.Util;
 
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
 
@@ -28,6 +30,7 @@ public class SOTMTeleOp extends RobotOpMode {
 
     private static final Pose resetPoseA = new Pose(10, 132, Math.toRadians(270));
     private static final Pose resetPoseB = new Pose(59, 8, Math.toRadians(90));
+    private static final Pose defaultStart = new Pose(59, 8, Math.toRadians(90));
 
     protected final SOTM sotm = new SOTM();
     protected boolean manualOnly = false;
@@ -41,11 +44,14 @@ public class SOTMTeleOp extends RobotOpMode {
 
     /** Only used when the runtime has no pose yet (OpMode started without an Auto before it). */
     public Pose startPose() {
-        if (Context.autonomousEnd == Pose.zero()) {
-            return Context.autonomousEnd;
-        };
+        return forAlliance(defaultStart);
+    }
 
-        return new Pose(59, 8, Math.toRadians(90));
+    /** Red poses -> blue: the field is rotationally symmetric (same as Auto.mirrorPose). */
+    private Pose forAlliance(Pose red) {
+        if (getAlliance() != Context.Alliance.BLUE) return red;
+
+        return new Pose(2 * Context.FIELD_CENTER - red.x(), 2 * Context.FIELD_CENTER - red.y(), Util.wrapRad(red.heading() + Math.PI));
     }
 
     @Override
@@ -56,10 +62,7 @@ public class SOTMTeleOp extends RobotOpMode {
     }
 
     public void fill() {
-        sotm.table.add(82, 1270, 34.5, 1);
-        sotm.table.add(43, 1190, 23, 0.3);
-        sotm.table.add(64.5, 1230, 37, 0.8);
-        sotm.table.add(55, 1240, 27, 0.65);
+        ShotData.load(sotm.table);
     }
 
     @Override
@@ -81,6 +84,7 @@ public class SOTMTeleOp extends RobotOpMode {
 
 
         Pose goal = goal();
+        if (goal != null) getTurret().setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
 
         Double visionAngle = getTurret().consumeVisionAngle();
         if (visionAngle != null && goal != null && sotmEnabled) sotm.learnBias(visionAngle, pose, goal);
@@ -108,10 +112,10 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad2.leftTriggerWasReleased()) spinEnabled = !spinEnabled;
         if (gamepad2.leftBumperWasPressed()) manualOnly = !manualOnly;
 
-        if (gamepad1.aWasPressed()) getFollower().setPose(resetPoseB);
-        if (gamepad1.bWasPressed()) getFollower().setPose(resetPoseA);
+        if (gamepad1.aWasPressed()) getFollower().setPose(forAlliance(resetPoseB));
+        if (gamepad1.bWasPressed()) getFollower().setPose(forAlliance(resetPoseA));
 
-        hood.fromAngle(!sotm.table.isEmpty() && hasShot && !manualOnly ? shot.hood : currAngle);
+        hood.setServoToPoses(hood.angleToServo(!sotm.table.isEmpty() && hasShot && !manualOnly ? shot.hood : currAngle));
 
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
         getShooter().setTargetVelocity(spinEnabled ? -velocity : 0);
@@ -136,7 +140,7 @@ public class SOTMTeleOp extends RobotOpMode {
             gamepad2.rumbleBlips(2);
         }
 
-        if (gamepad2.dpadRightWasPressed()) {
+        if (gamepad2.xWasPressed()) {
             logShot();
             gamepad2.rumbleBlips(1);
         }
@@ -163,6 +167,7 @@ public class SOTMTeleOp extends RobotOpMode {
             telemetry.addData("ToF", shot.tof);
             telemetry.addData("Aim point", "%.1f, %.1f", shot.aimX, shot.aimY);
             telemetry.addData("Turret cmd", sotm.turretAngleDeg(shot));
+            telemetry.addData("Vision range", getTurret().getRangeEstimate());
         }
 
         telemetry.addData("Turret", getTurret().getAngle());
@@ -179,7 +184,7 @@ public class SOTMTeleOp extends RobotOpMode {
     private void logShot() {
         if (shot == null || !shot.valid) return;
 
-        String line = String.format(Locale.US, "sotm.table.add(%.1f, %.0f, 0, %.2f);", shot.distance, manualVelocity, shot.tof);
+        String line = String.format(Locale.US, "table.add(%.1f, %.0f, %.1f, %.2f);", shot.distance, manualVelocity, currAngle, shot.tof);
 
         try (FileWriter f = new FileWriter(AppUtil.getInstance().getSettingsFile("shot_table.txt"), true)) {
             f.write(line + "\n");

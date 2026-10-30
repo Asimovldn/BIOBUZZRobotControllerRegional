@@ -26,7 +26,14 @@ public class Context {
     /** Do not edit, do not override. */
     public Follower follower;
 
+    /** Tag id -> lateral offset (inches) of that tag from the center of its 4-tag cluster, in the sticker's own left-to-right frame. */
     public static HashMap<Integer, Double> tagMap = new HashMap<>(16);
+
+    public static final double[] CLUSTER_OFFSET_IN = {-6.5, -2.75, 2.75, 6.5};
+
+    public static double clusterOffsetIn(int id) {
+        return CLUSTER_OFFSET_IN[Math.floorMod(id - 30, 4)];
+    }
 
     public static class Constants {
         public void editSetting(String setting, Object v) {
@@ -40,7 +47,20 @@ public class Context {
         }
     }
 
+    public static final double FIELD_CENTER = 72.0;
+
+    /** Pedro frame: origin at the audience/red corner, +x toward blue, +y toward the far wall. Field is 180 deg rotationally symmetric. */
     public static class HiveLocations {
+        @Config
+        public static class Tune {
+            public static double xTrimIn = 0;
+            public static double depthTrimIn = 0;
+        }
+
+        public static final double HIVE_SPACING_IN = 25.5;
+        public static final double OPENING_OFFSET_IN = 16.0;
+        public static final double OPENING_CENTER_HEIGHT_IN = 59.6;
+
         public Context ctx;
 
         public HiveLocations(Context ctx) {
@@ -48,23 +68,21 @@ public class Context {
         }
 
         public Pose get() {
-            if (ctx.GlobalAlliance == Alliance.BLUE) {
-                if (compare(ctx.location, "Audience")) {
-                    return new Pose(84.5, 55);
-                }
-                else if (compare(ctx.location, "Scoring")) {
-                    return new Pose(84.5, 91);
-                }
-            } else if (ctx.GlobalAlliance == Alliance.RED) {
-                if (compare(ctx.location, "Audience")) {
-                    return new Pose(58.5, 55);
-                }
-                else if (compare(ctx.location, "Scoring")) {
-                    return new Pose(61.5, 93);
-                }
-            }
+            if (ctx == null) return null;
+            return get(ctx.GlobalAlliance, ctx.location);
+        }
 
-            return Pose.zero();
+        public static Pose get(Alliance alliance, String location) {
+            if (alliance == null || location == null) return null;
+
+            boolean audience = compare(location, "Audience");
+            if (!audience && !compare(location, "Scoring")) return null;
+
+            double x = FIELD_CENTER + (alliance == Alliance.BLUE ? 1 : -1) * HIVE_SPACING_IN / 2 + Tune.xTrimIn;
+            double depth = OPENING_OFFSET_IN + Tune.depthTrimIn;
+            double y = FIELD_CENTER + (audience ? -depth : depth);
+
+            return new Pose(x, y);
         }
     }
 
@@ -268,37 +286,13 @@ public class Context {
         public void fillTagMap() {
             tagMap.clear();
 
-            tagMap.put(30, -16.5);
-            tagMap.put(31, -7.0);
-            tagMap.put(32, 7.0);
-            tagMap.put(33, 16.5);
-
-            tagMap.put(34, -16.5);
-            tagMap.put(35, -7.0);
-            tagMap.put(36, 7.0);
-            tagMap.put(37, 16.5);
-
-            tagMap.put(38, -16.5);
-            tagMap.put(39, -7.0);
-            tagMap.put(40, 7.0);
-            tagMap.put(41, 16.5);
-
-            tagMap.put(42, -16.5);
-            tagMap.put(43, -7.0);
-            tagMap.put(44, 7.0);
-            tagMap.put(45, 16.5);
+            for (int id = 30; id <= 45; id++) {
+                tagMap.put(id, clusterOffsetIn(id));
+            }
         }
 
         public void lazyFill() {
-            int n = 0;
-            int k = 30;
-            double[] vals = {-16.5, -7.0, 7.0, 16.5};
-
-            for (int i = 0; i < 16; i++) {
-                if (n > 3) { n = 0; }
-                tagMap.put(k, vals[n]);
-                k++; n++;
-            }
+            fillTagMap();
         }
 
         public TurretConstants(double MAX_VELOCITY) {

@@ -36,6 +36,7 @@ public class TurretCalibrate extends RobotOpMode {
         telemetry.addData("Servo pos", pos);
         telemetry.addData("Pulse (us)", 500 + pos * 2000);
         telemetry.addData("turretPerServo", Turret.Tune.turretPerServo);
+        telemetry.addData("servoRangeDeg", Turret.Tune.servoRangeDeg);
         telemetry.addData("centerTrimDeg", Turret.Tune.centerTrimDeg);
         telemetry.addLine("A=0  B=+60  X=-60  Y=+90  dpad = +-5 / +-1");
         telemetry.addLine("Measure the real angle P at command A: new turretPerServo = old * P / A");

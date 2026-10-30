@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.RobotOpMode;
+import org.firstinspires.ftc.teamcode.systems.hardware.Hood;
 import org.firstinspires.ftc.teamcode.systems.hardware.Intake;
 import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
@@ -43,6 +44,7 @@ public class Auto extends RobotOpMode {
         intake = new Intake();
         shooter = new Shooter();
         turret = new Turret(runtime);
+        hood = new Hood();
 
         drivetrain = new LazyDrive();
 

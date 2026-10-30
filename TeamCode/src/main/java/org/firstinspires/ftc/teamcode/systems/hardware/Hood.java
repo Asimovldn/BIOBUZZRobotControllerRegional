@@ -12,13 +12,13 @@ public class Hood extends Mechanism {
 
     @Override
     public void setup() {
-        setup(runtime.hardwareMap);
+        servo = runtime.hardwareMap.get(Servo.class, "servo");
+        servo.setPosition(1);
     }
 
-    /** Setups with a given hardware map, in case Asimov Runtime or Context isn't available. */
     public void setup(HardwareMap hw) {
         servo = hw.get(Servo.class, "servo");
-        setPosition(1);
+        servo.setPosition(1);
     }
 
     public double getPosition() {
@@ -34,15 +34,7 @@ public class Hood extends Mechanism {
         return 1 + (((angle - MIN_ANGLE) * (0.65 - 1)) / (40 - 20));
     }
 
-    public void setPosition(double pos) {
+    public void setServoToPoses(double pos) {
         servo.setPosition(pos);
-    }
-
-    /** Calls setPosition passing in the anguled version of the parameter passed.
-     * Basically wraps the angle. {@code servo.setPosition(angleToServo(ang))};
-     * @param ang the angle.
-     */
-    public void fromAngle(double ang) {
-        setPosition(angleToServo(ang));
     }
 }

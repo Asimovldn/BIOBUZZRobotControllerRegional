@@ -12,7 +12,11 @@ import com.pedropathing.ivy.Command;
 
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import com.pedropathing.math.Pose;
+
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
+import org.firstinspires.ftc.teamcode.systems.sotm.ShotData;
+import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
 
 import java.util.function.BooleanSupplier;
 
@@ -23,19 +27,25 @@ public class RedSoloA extends Auto {
     @Override
     public void setup() {
         sotm = new SOTM();
+        ShotData.load(sotm.table);
         locs = new Context.HiveLocations(runtime);
     }
 
     @Override
     public void periodic() {
-        sotm.update(follower.pose());
-    }
+        if (sotm == null) return;
 
-    public void fill() {
-        sotm.table.add(85, 1300, 0, 1);
-        sotm.table.add(33, 1100, 0, 0.3);
-        sotm.table.add(73, 1250, 0, 0.8);
-        sotm.table.add(54, 1150, 0, 0.65);
+        Pose pose = follower.pose();
+        sotm.update(pose, follower.velocity());
+
+        Pose goal = locs.get();
+        if (goal == null) return;
+
+        ShotSolver.Solution shot = sotm.solve(pose, goal);
+        if (!shot.valid) return;
+
+        getTurret().setTrackAngle(sotm.turretAngleDeg(shot));
+        hood.setServoToPoses(hood.angleToServo(shot.hood));
     }
 
     @Nullable
@@ -44,7 +54,7 @@ public class RedSoloA extends Auto {
         return sequential(
                 instant(() -> getTurret().setMode(Turret.Mode.TRACK)),
                 instant(() -> runtime.location = "Audience"),
-                instant(() -> shooter.setTargetVelocity(sotm.solve(follower.pose(), locs.get()).velocity)),
+                instant(() -> shooter.setTargetVelocity(-sotm.solve(follower.pose(), locs.get()).velocity)),
                 waitUntil(shooter::isReady),
                 shooter.enableLaunch(),
                 instant(() -> intake.setThrottle(1)),
