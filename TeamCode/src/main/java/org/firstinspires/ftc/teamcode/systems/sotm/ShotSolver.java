@@ -16,7 +16,7 @@ public class ShotSolver {
     public double latency = 0.06;
 
     /** inches */
-    public double offsetX = 0.8, offsetY = 0;
+    public double offsetX = -5, offsetY = 0;
 
     public int iterations = 16;
 

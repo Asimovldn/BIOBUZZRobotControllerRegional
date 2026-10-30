@@ -33,7 +33,7 @@ import java.util.List;
 public class Turret extends Mechanism {
 
     @Config
-    public static class Tune {
+    public static class TurretTune {
         public static double aimGain = 0.7;
         public static double aimDeadbandDeg = 1.5;
         public static double settleSec = 0.08;
@@ -192,7 +192,7 @@ public class Turret extends Mechanism {
         return visionAngle;
     }
 
-    public void editGain(double x) { Tune.aimGain = x; }
+    public void editGain(double x) { TurretTune.aimGain = x; }
     public double getAngle() { return currentAngle; }
     public double getError() { return err; }
     public double getTargetAngle() { return targetAngle; }
@@ -256,7 +256,7 @@ public class Turret extends Mechanism {
                 if (trackVel != 0 && now - trackStampNs > 200_000_000L) trackVel = 0;
                 visionUpdate(now);
 
-                goal = wrapToSafeRange(trackAngle + Range.clip(trackVel, -slewDps(), slewDps()) * Tune.trackLeadSec);
+                goal = wrapToSafeRange(trackAngle + Range.clip(trackVel, -slewDps(), slewDps()) * TurretTune.trackLeadSec);
                 targetAngle = goal;
                 break;
 
@@ -307,10 +307,10 @@ public class Turret extends Mechanism {
             double ageMs = res.getStaleness() + res.getCaptureLatency() + res.getTargetingLatency();
             long captureNs = now - (long) (ageMs * 1e6);
 
-            if (ageMs <= Tune.maxVisionAgeMs && captureNs > lastMoveNs + (long) (Tune.settleSec * 1e9)) {
+            if (ageMs <= TurretTune.maxVisionAgeMs && captureNs > lastMoveNs + (long) (TurretTune.settleSec * 1e9)) {
                 Double tx = readBearing(res, wrap, now);
-                if (tx != null && Math.abs(tx) > Tune.aimDeadbandDeg) {
-                    targetAngle = angleAt(captureNs) + AIM_SIGN * Tune.aimGain * tx;
+                if (tx != null && Math.abs(tx) > TurretTune.aimDeadbandDeg) {
+                    targetAngle = angleAt(captureNs) + AIM_SIGN * TurretTune.aimGain * tx;
                 }
             }
         }
@@ -325,10 +325,10 @@ public class Turret extends Mechanism {
         lastResultTimestamp = res.getTimestamp();
 
         double ageMs = res.getStaleness() + res.getCaptureLatency() + res.getTargetingLatency();
-        if (ageMs > Tune.maxVisionAgeMs) return;
+        if (ageMs > TurretTune.maxVisionAgeMs) return;
 
         long captureNs = now - (long) (ageMs * 1e6);
-        if (captureNs <= lastMoveNs + (long) (Tune.settleSec * 1e9)) return;
+        if (captureNs <= lastMoveNs + (long) (TurretTune.settleSec * 1e9)) return;
 
         Double tx = readBearing(res, true, now);
         if (tx == null) return;
@@ -361,7 +361,7 @@ public class Turret extends Mechanism {
             int id = f.getFiducialId();
             if (!isGoalTag(goal, id)) continue;
 
-            double u = Context.clusterOffsetIn(id) * (Tune.clusterMirrored ? -1 : 1);
+            double u = Context.clusterOffsetIn(id) * (TurretTune.clusterMirrored ? -1 : 1);
             double t = Math.tan(Math.toRadians(f.getTargetXDegrees()));
 
             sumU += u;
@@ -378,7 +378,7 @@ public class Turret extends Mechanism {
         seenTa = bestTa;
 
         boolean hintFresh = rangeHintIn > 0 && now - rangeHintNs < HINT_MAX_AGE_NS;
-        double hint = hintFresh ? rangeHintIn : Tune.defaultRangeIn;
+        double hint = hintFresh ? rangeHintIn : TurretTune.defaultRangeIn;
 
         double centerT = (sumT - sumU / hint) / n;
         rangeEstimateIn = hint;
@@ -434,19 +434,19 @@ public class Turret extends Mechanism {
     }
 
     private double center() {
-        return constants.WRAP_CENTER + Tune.centerTrimDeg;
+        return constants.WRAP_CENTER + TurretTune.centerTrimDeg;
     }
 
     public static double ratio() {
-        return Math.abs(Tune.turretPerServo);
+        return Math.abs(TurretTune.turretPerServo);
     }
 
     private static double rangeDeg() {
-        return Tune.servoRangeDeg * ratio();
+        return TurretTune.servoRangeDeg * ratio();
     }
 
     private static double slewDps() {
-        return Tune.servoSpeedDps * ratio();
+        return TurretTune.servoSpeedDps * ratio();
     }
 
     /** Turret angle (deg) -> servo position [0, 1]. */

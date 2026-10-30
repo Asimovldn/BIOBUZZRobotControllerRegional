@@ -61,9 +61,9 @@ public class Context {
         *  TODO: this is a lie, remember to tune.
         */
         @Config
-        public static class Tune {
-            public static double xTrimIn = 0;
-            public static double depthTrimIn = 0;
+        public static class HiveTune {
+            public static double xTrimIn = -12.5;
+            public static double depthTrimIn = -10;
         }
 
         public static final double HIVE_SPACING_IN = 25.5;
@@ -86,22 +86,21 @@ public class Context {
             boolean audience = compare(location, "Audience");
             if (!audience && !compare(location, "Scoring")) return null;
 
-            double x = FIELD_CENTER + (alliance == Alliance.BLUE ? 1 : -1) * HIVE_SPACING_IN / 2 + Tune.xTrimIn;
-            double depth = OPENING_OFFSET_IN + Tune.depthTrimIn;
+            double xHive = ((HIVE_SPACING_IN / 2) * (alliance == Alliance.BLUE ? 1 : -1));
+            double x = FIELD_CENTER + xHive + HiveTune.xTrimIn;
+            double depth = OPENING_OFFSET_IN + HiveTune.depthTrimIn;
             double y = FIELD_CENTER + (audience ? -depth : depth);
 
             return new Pose(x, y);
         }
     }
 
-    @Config
     public static class ShooterConstants extends Constants {
 
         public static class BackShooter {
             public double kP = 0.01, kI = 0.001, kD = 0.005, kS = 0.16, kV = 0.0000571;
         }
 
-        @Config
         public static class Coefficients {
             public double kP = 0.1, kI = 0, kD = 0, kS = 0, kV = 0.05;
         }

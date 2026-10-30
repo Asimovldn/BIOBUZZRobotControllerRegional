@@ -21,9 +21,9 @@ public class Shooter extends Mechanism {
         public static double kD = 0;
         public static double kF = 0;
         public static double kI = 0;
-        public static double kP = 0.006;
-        public static double kS = 0.01;
-        public static double kV = 0.00048;
+        public static double kP = 0.009;
+        public static double kS = 0;
+        public static double kV = 0.0005;
         public static double maxOvershoot = 19;
         public static double nominalVoltage = 12.7;
         public static double readyTolerance = 28;
@@ -54,6 +54,11 @@ public class Shooter extends Mechanism {
             battery = vs;
             break;
         }
+    }
+
+    @Override
+    public void setTargetVelocity(double v) {
+        super.setTargetVelocity(-v);
     }
 
     @Override
