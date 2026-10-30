@@ -62,7 +62,7 @@ public class Context {
         */
         @Config
         public static class HiveTune {
-            public static double xTrimIn = -12.5;
+            public static double xTrimIn = -3;
             public static double depthTrimIn = -10;
         }
 
