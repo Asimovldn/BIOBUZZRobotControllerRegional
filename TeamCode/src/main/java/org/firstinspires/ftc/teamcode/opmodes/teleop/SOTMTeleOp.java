@@ -155,11 +155,10 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("SOTM", sotmEnabled);
         telemetry.addData("Table", sotm.table.isEmpty() ? "EMPTY (fallback ToF, manual velocity)" : sotm.table.size() + " rows");
         telemetry.addData("Location", runtime.location);
-        telemetry.addData("Pose", pose);
+        telemetry.addData("Pose", pose.toString());
         telemetry.addData("Speed (in/s)", sotm.speed());
         telemetry.addData("Omega (rad/s)", sotm.omega());
         telemetry.addData("Servo ", getTurret().getServoPosition());
-        telemetry.addData("Vision bias", sotm.bias());
         telemetry.addData("Logged", lastLog);
 
         if (hasShot) {
@@ -167,7 +166,6 @@ public class SOTMTeleOp extends RobotOpMode {
             telemetry.addData("ToF", shot.tof);
             telemetry.addData("Aim point", "%.1f, %.1f", shot.aimX, shot.aimY);
             telemetry.addData("Turret cmd", sotm.turretAngleDeg(shot));
-            telemetry.addData("Vision range", getTurret().getRangeEstimate());
         }
 
         telemetry.addData("Turret", getTurret().getAngle());
@@ -175,7 +173,6 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Flywheel", getShooter().Speed());
         telemetry.addData("Flywheel target", getShooter().getTargetVelocity());
         telemetry.addData("Ready", ready);
-        telemetry.addData("Angle: ", currAngle);
         telemetry.update();
 
         Drawing.drawDebug(follower);
@@ -198,6 +195,7 @@ public class SOTMTeleOp extends RobotOpMode {
         try {
             return new Context.HiveLocations(runtime).get();
         } catch (Exception e) {
+            telemetry.addData("hey check this out: ", e.toString());
             return null;
         }
     }

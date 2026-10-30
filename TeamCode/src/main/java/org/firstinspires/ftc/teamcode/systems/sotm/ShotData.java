@@ -1,9 +1,9 @@
 package org.firstinspires.ftc.teamcode.systems.sotm;
 
-public final class ShotData {
+public class ShotData {
     private ShotData() {}
 
-    /** distance (in), flywheel ticks/s, hood angle (deg), time of flight (s). Shared by TeleOp and Auto. */
+    /** distance (in), flywheel ticks/s, hood angle (deg), time of flight (s). */
     public static void load(ShotTable table) {
         table.add(82, 1270, 34.5, 1);
         table.add(43, 1190, 23, 0.3);

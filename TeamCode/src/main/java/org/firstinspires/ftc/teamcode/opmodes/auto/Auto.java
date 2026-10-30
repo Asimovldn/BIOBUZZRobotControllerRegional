@@ -66,11 +66,12 @@ public class Auto extends RobotOpMode {
     public void start() {
         Scheduler.reset();
 
+        setup();
+
         if (routine() != null) {
             Scheduler.schedule(routine());
         }
 
-        setup();
         follower.update();
     }
 
@@ -107,6 +108,8 @@ public class Auto extends RobotOpMode {
         // Make Poses Below
 
         public void build() {
+            getter.clear();
+
             startPoseA = poseFactory.of(59, 8, 90);
             gardenPose = poseFactory.of(9, 7, 180);
             parkPoseA = poseFactory.of(133, 30, 180);
@@ -117,6 +120,11 @@ public class Auto extends RobotOpMode {
         }
 
         public static void register(String name, Path path) {
+            if (getter.get(name) == null) {
+                getter.replace(name, path);
+                return;
+            }
+
             getter.put(name, path);
         }
 

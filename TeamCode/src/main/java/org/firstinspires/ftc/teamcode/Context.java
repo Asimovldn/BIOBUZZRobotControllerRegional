@@ -26,7 +26,7 @@ public class Context {
     /** Do not edit, do not override. */
     public Follower follower;
 
-    /** Tag id -> lateral offset (inches) of that tag from the center of its 4-tag cluster, in the sticker's own left-to-right frame. */
+    /** Tag id -> lateral offset (inches) of that tag from the center of its 4-tag cluster. */
     public static HashMap<Integer, Double> tagMap = new HashMap<>(16);
 
     public static final double[] CLUSTER_OFFSET_IN = {-6.5, -2.75, 2.75, 6.5};
@@ -49,8 +49,8 @@ public class Context {
 
     public static final double FIELD_CENTER = 72.0;
 
-    /** Pedro frame: origin at the audience/red corner, +x toward blue, +y toward the far wall. Field is 180 deg rotationally symmetric. */
     public static class HiveLocations {
+        /** instead of fixing the issue I added more values to tune omygod */
         @Config
         public static class Tune {
             public static double xTrimIn = 0;
@@ -59,7 +59,6 @@ public class Context {
 
         public static final double HIVE_SPACING_IN = 25.5;
         public static final double OPENING_OFFSET_IN = 16.0;
-        public static final double OPENING_CENTER_HEIGHT_IN = 59.6;
 
         public Context ctx;
 
