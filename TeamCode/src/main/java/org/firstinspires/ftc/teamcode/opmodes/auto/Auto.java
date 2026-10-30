@@ -17,6 +17,7 @@ import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.util.LazyDrive;
+import org.firstinspires.ftc.teamcode.util.Util;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,10 +29,15 @@ public class Auto extends RobotOpMode {
     private static final Logger log = LoggerFactory.getLogger(Auto.class);
     Operator paths;
 
+    /** Reduces the Auto to a single Code, for Runtime Owner Operations. */
+    public String code() {
+        return "BASECLASS";
+    }
+
     @Override
     public void init() {
         if (Context.runtime == null) {
-            runtime = Context.setRuntime(new Context());
+            runtime = Context.fromOwner(new Util.Code("AUTO", allianceForOpMode().toString(), code()), hardwareMap);
         } else {
             runtime = Context.runtime;
         }

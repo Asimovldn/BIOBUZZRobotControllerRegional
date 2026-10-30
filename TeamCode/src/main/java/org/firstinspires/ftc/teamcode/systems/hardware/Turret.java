@@ -44,8 +44,8 @@ public class Turret extends Mechanism {
         /** Turret degrees per servo degree. 1.0 = direct drive, 0.5 = servo gear drives a gear twice its size. */
         public static double turretPerServo = 1.0;
 
-        /** Servo shaft travel for 0..1 (500..2500 us). */
-        public static double servoRangeDeg = 320.0;
+        /** Servo shaft travel for [0, 1] (500, 2500 us). */
+        public static double servoRangeDeg = 300.0;
 
         /** just in case the engineering team messes with the gear positions, adjust by degree offset */
         public static double centerTrimDeg = 0.0;
@@ -117,6 +117,8 @@ public class Turret extends Mechanism {
     }
 
     public void reset() {
+        /* so much stuff to reset holyyyy */
+
         limelight.stop();
         limelight.pipelineSwitch(0);
         limelight.setPollRateHz(100);

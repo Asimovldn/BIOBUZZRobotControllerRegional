@@ -18,6 +18,7 @@ import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.util.LazyDrive;
+import org.firstinspires.ftc.teamcode.util.Util;
 
 import java.util.Set;
 
@@ -44,7 +45,7 @@ public class RobotOpMode extends OpMode {
     @Override
     public void init() {
         if (Context.runtime == null) {
-            runtime = Context.setRuntime(new Context());
+            runtime = Context.fromOwner(new Util.Code("BASECLASS", "OpMode"), hardwareMap);
         } else {
             runtime = Context.runtime;
         }

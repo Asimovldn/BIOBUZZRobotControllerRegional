@@ -10,10 +10,9 @@ public class ResetRuntime extends OpMode {
     @Override
     public void init() {
         Context.runtime = null;
+        Context.reset();
     }
 
     @Override
-    public void loop() {
-        Context.runtime = null;
-    }
+    public void loop() {}
 }

@@ -7,14 +7,19 @@ import com.qualcomm.robotcore.hardware.AnalogSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoImplEx;
 
+import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.systems.hardware.Hood;
+import org.firstinspires.ftc.teamcode.util.Util;
 
+/** Repos servo and reset runtime */
 @TeleOp(name="Reposition Servo")
 public class run extends LinearOpMode {
     private double currAngle = 20;
     @Override
     public void runOpMode() throws InterruptedException {
         ServoImplEx servo = hardwareMap.get(ServoImplEx.class, "turret");
+
+        Context ctx = Context.fromOwner(Util.Code.fromString("ReposServo"), hardwareMap);
 
         Hood hood = new Hood();
 
@@ -44,6 +49,7 @@ public class run extends LinearOpMode {
             telemetry.addData("Servo Pos: ", servo.getPosition());
             telemetry.addData("Servo Pos Hood: ", hood.getPosition());
             telemetry.addData("Curr Angle: ", currAngle);
+
             updateTelemetry(telemetry);
         }
     }

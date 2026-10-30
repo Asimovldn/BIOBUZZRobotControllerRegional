@@ -31,6 +31,10 @@ public class RedSoloA extends Auto {
         locs = new Context.HiveLocations(runtime);
     }
 
+    public String code() {
+        return "A";
+    }
+
     @Override
     public void periodic() {
         if (sotm == null) return;

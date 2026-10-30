@@ -7,6 +7,8 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.pedro.Constants;
+import org.firstinspires.ftc.teamcode.util.Util;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
@@ -35,6 +37,10 @@ public class Context {
         return CLUSTER_OFFSET_IN[Math.floorMod(id - 30, 4)];
     }
 
+    public static void reset() {
+        runtime = null;
+    }
+
     public static class Constants {
         public void editSetting(String setting, Object v) {
             try {
@@ -50,7 +56,10 @@ public class Context {
     public static final double FIELD_CENTER = 72.0;
 
     public static class HiveLocations {
-        /** instead of fixing the issue I added more values to tune omygod */
+        /* instead of fixing the issue I added more values to tune omygod
+        *  the commit says the values are "not guessed."
+        *  TODO: this is a lie, remember to tune.
+        */
         @Config
         public static class Tune {
             public static double xTrimIn = 0;
@@ -444,10 +453,38 @@ public class Context {
         return Context.runtime;
     };
 
+    public static Context fromOwner(Util.Code code, HardwareMap hw) {
+        Context.reset();
+        Context.runtime = new Context();
+        Context.runtime.follower = org.firstinspires.ftc.teamcode.pedro.Constants.create(hw);
+        Context.runtime.setOwner(code);
+
+        return Context.runtime;
+    }
+
+
+    /** Runtime of the whole robot, DO NOT CALL VIA INSTANCE REFERENCE. */
+    @Nullable
+    public static Context runtime;
+    // this is bad code, since I can do Context.runtime.runtime.runtime.runtime.runtime;
+
+    public static Context backup;
+
+    public static Util.Code backupOwner = new Util.Code("");
 
     @Nullable
-    /** Runtime of the whole robot, DO NOT CALL VIA INSTANCE REFERENCE */
-    public static Context runtime;
+    public String owner = "";
+
+    public void setOwner(@Nullable Util.Code code) { owner = code.build(); }
+
+    public boolean isOwner(Util.Code code) {
+        return isOwner(code.build());
+    }
+
+    public boolean isOwner(String code) {
+        if (owner == null) return true;
+        return compare(owner, code);
+    }
 
     public HardwareMap hardwareMap;
 }

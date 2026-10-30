@@ -58,6 +58,10 @@ public class SOTMTeleOp extends RobotOpMode {
     public void create() {
         if (runtime.pose == null) getFollower().setPose(startPose());
 
+        if (runtime.owner == null) {
+            runtime.setOwner(new Util.Code("SOTM", allianceForOpMode().toString()));
+        };
+
         fill();
     }
 
@@ -159,7 +163,7 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Speed (in/s)", sotm.speed());
         telemetry.addData("Omega (rad/s)", sotm.omega());
         telemetry.addData("Servo ", getTurret().getServoPosition());
-        telemetry.addData("Logged", lastLog);
+        telemetry.addData("Runtime Owner", runtime.owner);
 
         if (hasShot) {
             telemetry.addData("Distance", shot.distance);

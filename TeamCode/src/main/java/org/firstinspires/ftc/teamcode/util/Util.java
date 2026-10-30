@@ -89,6 +89,24 @@ public class Util {
         return r - Math.PI;
     }
 
+    public static class Code {
+        public String res;
+
+        public Code(String... vals) {
+            res = String.join("_", vals);
+        }
+
+        public static Code fromString(String str) {
+            Code cd = new Util.Code();
+            cd.res = str;
+            return cd;
+        }
+
+        public String build() {
+            return res;
+        }
+    }
+
     public static boolean compare(Object a, Object b) { return a.equals(b); }
 
     public static double normalize(double t, double a, double b) {
