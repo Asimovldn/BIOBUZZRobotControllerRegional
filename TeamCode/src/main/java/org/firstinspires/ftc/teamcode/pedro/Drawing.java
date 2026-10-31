@@ -27,6 +27,7 @@ public class Drawing {
 
     private static final String ROBOT_LOOK = "#3F51B5";
     private static final String HISTORY_LOOK = "#4CAF50";
+    private static final String POSE_LOOK = "#6693F5";
 
     private static final Deque<Pose> poseHistory = new ArrayDeque<>();
 
@@ -88,6 +89,10 @@ public class Drawing {
 
     public static void drawRobot(Pose pose) {
         drawRobot(pose, ROBOT_LOOK);
+    }
+
+    public static void drawAim(Path path) {
+        drawPath(path, POSE_LOOK);
     }
 
     public static void drawPath(Path path, String color) {
@@ -211,5 +216,31 @@ public class Drawing {
     public static void sendPacket() {
         FtcDashboard.getInstance().sendTelemetryPacket(packet);
         packet = new TelemetryPacket();
+    }
+
+    public static void drawPose(Pose pose) {
+        if (!isValidPose(pose)) {
+            return;
+        }
+
+        Canvas canvas = packet.fieldOverlay();
+
+        double x = pose.x();
+        double y = pose.y();
+        double heading = pose.heading();
+
+        canvas.setStroke(POSE_LOOK);
+        canvas.setStrokeWidth(1);
+        canvas.strokeCircle(fx(x), fy(y), ROBOT_RADIUS);
+
+        double headingX = Math.cos(heading) * ROBOT_RADIUS;
+        double headingY = Math.sin(heading) * ROBOT_RADIUS;
+
+        double x1 = x + headingX / 2;
+        double y1 = y + headingY / 2;
+        double x2 = x + headingX;
+        double y2 = y + headingY;
+
+        canvas.strokeLine(fx(x1), fy(y1), fx(x2), fy(y2));
     }
 }

@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleop;
 
+import static com.pedropathing.api.Paths.line;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.pedropathing.ivy.Scheduler;
@@ -180,6 +182,12 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.update();
 
         Drawing.drawDebug(follower);
+
+        Drawing.drawPose(
+                goal()
+        );
+
+        Drawing.drawAim(line(pose, goal()));
     }
 
     private void logShot() {
