@@ -110,7 +110,6 @@ public class Turret extends Mechanism {
         HardwareMap hw = runtime.hardwareMap;
 
         servo = hw.get(ServoImplEx.class, SERVO_NAME);
-        servo.setPwmRange(new PwmControl.PwmRange(PWM_MIN_US, PWM_MAX_US));
         limelight = hw.get(Limelight3A.class, "Ethernet Device");
 
         reset();

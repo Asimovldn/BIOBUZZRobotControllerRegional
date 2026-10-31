@@ -56,6 +56,7 @@ public class RedSoloA extends Auto {
     @Override
     public Command routine() {
         return sequential(
+                paths.taskWait(),
                 instant(() -> getTurret().setMode(Turret.Mode.TRACK)),
                 instant(() -> runtime.location = "Audience"),
                 instant(() -> shooter.setTargetVelocity(-sotm.solve(follower.pose(), locs.get()).velocity)),

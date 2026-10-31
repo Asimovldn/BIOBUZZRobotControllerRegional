@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes.auto;
 
 import static com.pedropathing.api.Paths.line;
+import static com.pedropathing.ivy.commands.Commands.waitUntil;
 
 import com.pedropathing.api.PoseFactory;
 import com.pedropathing.ivy.Command;
@@ -103,6 +104,7 @@ public class Auto extends RobotOpMode {
         public PoseFactory getFactory() {
             return poseFactory;
         }
+        private boolean builded = false;
 
         public void mirrorPose(Context ctx) {
             if (ctx.GlobalAlliance == Context.Alliance.BLUE) {
@@ -123,6 +125,12 @@ public class Auto extends RobotOpMode {
 
             register("toGarden", line(startPoseA, gardenPose).facingPoint(gardenPose));
             register("toScoringRed", line(gardenPose, scoringRed).linear(gardenPose, scoringRed));
+
+            builded = true;
+        }
+
+        public boolean ready() {
+            return builded;
         }
 
         public static void register(String name, Path path) {
@@ -132,6 +140,10 @@ public class Auto extends RobotOpMode {
             }
 
             getter.put(name, path);
+        }
+
+        public Command taskWait() {
+            return waitUntil(this::ready);
         }
 
         public static Path get(String name) {
