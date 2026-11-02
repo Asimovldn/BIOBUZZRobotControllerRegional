@@ -31,7 +31,7 @@ public class Hood extends Mechanism {
     public double angleToServo(double ang) {
         double angle = Range.clip(ang, MIN_ANGLE, MAX_ANGLE);
 
-        return 1 + (((angle - MIN_ANGLE) * (0.65 - 1)) / (40 - 20));
+        return 1 + (((angle - MIN_ANGLE) * (0.65 - 1)) / (MAX_ANGLE - MIN_ANGLE));
     }
 
     public void setServoToPoses(double pos) {

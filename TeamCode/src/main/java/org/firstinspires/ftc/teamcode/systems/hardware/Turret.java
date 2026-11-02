@@ -13,56 +13,30 @@ import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.util.Util;
 
-import java.util.Arrays;
 import java.util.List;
 
-/**
- * Turret driven by ONE servo in POSITIONAL mode, slew limited. No feedback: power on with the turret centered.
- * Angle is relative to the robot, + is clockwise (same sign as a positive Limelight tx).
- * <pre>
- *  OFF           PWM disabled (servo limp)
- *  CALIBRATE     servo parked at center
- *  MANUAL        setManualVelocity(deg/s)
- *  SEMI_AIM      Limelight aim on any tag, no wrapping
- *  AIMING        Limelight aim on goal tags, wrapping into the safe range
- *  TRACK         follows setTrackAngle(deg), wrapping into the safe range (odometry / SOTM)
- *  RECENTERING   go to the center
- *  TUNE_POSITION go to setManualAngle(deg)
- * </pre>
- */
 public class Turret extends Mechanism {
 
     @Config
-    public static class TurretTune {
+    public static class Tune {
         public static double aimGain = 0.7;
         public static double aimDeadbandDeg = 1.5;
         public static double settleSec = 0.08;
 
-        /** Servo shaft speed in deg/s. The turret slews at this times turretPerServo. */
+        /** deg/s */
         public static double servoSpeedDps = 280.0;
 
-        /** Turret degrees per servo degree. 1.0 = direct drive, 0.5 = servo gear drives a gear twice its size. */
         public static double turretPerServo = 1.0;
 
-        /** Servo shaft travel for [0, 1] (500, 2500 us). */
-        public static double servoRangeDeg = 300.0;
-
-        /** just in case the engineering team messes with the gear positions, adjust by degree offset */
+        /** variável xoxé ferrou a torreta */
         public static double centerTrimDeg = 0.0;
+        // TODO pensar numa forma de usar esse centerTrimDeg na partida pra alinhar o meio da torret manualmente
 
         public static double trackLeadSec = 0.04;
-
-        /** Ignore Limelight frames older than this (capture + latency), ms. */
-        public static double maxVisionAgeMs = 250.0;
-
-        /** Range used to turn a single visible tag into the cluster center when there is no odometry hint. */
-        public static double defaultRangeIn = 60.0;
-
-        /** The robot sees the sticker rotated 180 deg (bottom edge faces the field center), so the printed order is reversed. */
-        public static boolean clusterMirrored = true;
     }
 
     private static final String SERVO_NAME = "turret";
+    private static final int SERVO_RANGE_DEG = 320;
 
     private static final double PWM_MIN_US = 500, PWM_MAX_US = 2500;
     private static final double SERVO_MIN_POS = 0, SERVO_MAX_POS = 1;
@@ -71,8 +45,6 @@ public class Turret extends Mechanism {
     private static final double AIM_SIGN = 1.0;
 
     private static final int HISTORY = 64;
-    private static final double MIN_FIT_RANGE_IN = 12, MAX_FIT_RANGE_IN = 300;
-    private static final long HINT_MAX_AGE_NS = 500_000_000L;
 
     public enum Mode { OFF, CALIBRATE, MANUAL, SEMI_AIM, AIMING, TRACK, RECENTERING, TUNE_POSITION }
 
@@ -97,8 +69,6 @@ public class Turret extends Mechanism {
     private long trackStampNs = 0;
     private double lastServoPos = 0.5;
     private double seenTa, deltatime;
-    private double rangeHintIn = 0, rangeEstimateIn = 0;
-    private long rangeHintNs = 0;
     private long lastNanos = 0, lastMoveNs = 0;
 
     private final long[] histNs = new long[HISTORY];
@@ -110,14 +80,13 @@ public class Turret extends Mechanism {
         HardwareMap hw = runtime.hardwareMap;
 
         servo = hw.get(ServoImplEx.class, SERVO_NAME);
+        servo.setPwmRange(new PwmControl.PwmRange(PWM_MIN_US, PWM_MAX_US));
         limelight = hw.get(Limelight3A.class, "Ethernet Device");
 
         reset();
     }
 
     public void reset() {
-        /* so much stuff to reset holyyyy */
-
         limelight.stop();
         limelight.pipelineSwitch(0);
         limelight.setPollRateHz(100);
@@ -177,12 +146,6 @@ public class Turret extends Mechanism {
         trackAngle = deg;
     }
 
-    /** Distance (in) from the turret to the goal, from odometry. Only needed to read a cluster from 1 visible tag. */
-    public void setRangeHint(double inches) {
-        rangeHintIn = inches;
-        rangeHintNs = System.nanoTime();
-    }
-
     /** limelight as a safety use for turret unalign */
     public Double consumeVisionAngle() {
         if (!visionFresh) return null;
@@ -191,13 +154,12 @@ public class Turret extends Mechanism {
         return visionAngle;
     }
 
-    public void editGain(double x) { TurretTune.aimGain = x; }
+    public void editGain(double x) { Tune.aimGain = x; }
     public double getAngle() { return currentAngle; }
     public double getError() { return err; }
     public double getTargetAngle() { return targetAngle; }
     public double getServoPosition() { return angleToServo(currentAngle); }
     public double getTa() { return seenTa; }
-    public double getRangeEstimate() { return rangeEstimateIn; }
     public double getDeltatime() { return deltatime; }
     public Context.Alliance getAlliance() { return alliance; }
     public void setAlliance(Context.Alliance alliance) { this.alliance = alliance; }
@@ -255,7 +217,7 @@ public class Turret extends Mechanism {
                 if (trackVel != 0 && now - trackStampNs > 200_000_000L) trackVel = 0;
                 visionUpdate(now);
 
-                goal = wrapToSafeRange(trackAngle + Range.clip(trackVel, -slewDps(), slewDps()) * TurretTune.trackLeadSec);
+                goal = wrapToSafeRange(trackAngle + Range.clip(trackVel, -slewDps(), slewDps()) * Tune.trackLeadSec);
                 targetAngle = goal;
                 break;
 
@@ -295,21 +257,20 @@ public class Turret extends Mechanism {
 
     /** Returns the goal angle. wrap = false is SEMI_AIM (clamped to the limits, no wrapping). */
     private double aim(boolean wrap) {
-        long now = System.nanoTime();
         LLResult res = limelight.getLatestResult();
 
-        if (Math.abs(targetAngle - currentAngle) > 0.3) lastMoveNs = now;
+        if (Math.abs(targetAngle - currentAngle) > 0.3) lastMoveNs = System.nanoTime();
 
         if (res != null && res.isValid() && res.getTimestamp() != lastResultTimestamp) {
             lastResultTimestamp = res.getTimestamp();
 
             double ageMs = res.getStaleness() + res.getCaptureLatency() + res.getTargetingLatency();
-            long captureNs = now - (long) (ageMs * 1e6);
+            long captureNs = System.nanoTime() - (long) (ageMs * 1e6);
 
-            if (ageMs <= TurretTune.maxVisionAgeMs && captureNs > lastMoveNs + (long) (TurretTune.settleSec * 1e9)) {
-                Double tx = readBearing(res, wrap, now);
-                if (tx != null && Math.abs(tx) > TurretTune.aimDeadbandDeg) {
-                    targetAngle = angleAt(captureNs) + AIM_SIGN * TurretTune.aimGain * tx;
+            if (captureNs > lastMoveNs + (long) (Tune.settleSec * 1e9)) {
+                Double tx = readTx(res, wrap);
+                if (tx != null && Math.abs(tx) > Tune.aimDeadbandDeg) {
+                    targetAngle = angleAt(captureNs) + AIM_SIGN * Tune.aimGain * tx;
                 }
             }
         }
@@ -324,49 +285,35 @@ public class Turret extends Mechanism {
         lastResultTimestamp = res.getTimestamp();
 
         double ageMs = res.getStaleness() + res.getCaptureLatency() + res.getTargetingLatency();
-        if (ageMs > TurretTune.maxVisionAgeMs) return;
-
         long captureNs = now - (long) (ageMs * 1e6);
-        if (captureNs <= lastMoveNs + (long) (TurretTune.settleSec * 1e9)) return;
+        if (captureNs <= lastMoveNs + (long) (Tune.settleSec * 1e9)) return;
 
-        Double tx = readBearing(res, true, now);
+        Double tx = readTx(res, true);
         if (tx == null) return;
 
         visionAngle = angleAt(captureNs) + tx * AIM_SIGN;
         visionFresh = true;
     }
 
-    /** SEMI_AIM: any tag. AIMING: bearing (deg) of the goal cluster center, from whichever of its tags are visible. */
-    private Double readBearing(LLResult res, boolean onlyGoalTags, long now) {
+    /** SEMI_AIM: any tag. AIMING: only the goal tags, each with its own offset, averaged. */
+    private Double readTx(LLResult res, boolean onlyGoalTags) {
         if (!onlyGoalTags || alliance == null) return res.getTx();
 
         List<LLResultTypes.FiducialResult> fids = res.getFiducialResults();
         if (fids == null) return null;
 
-        return clusterBearing(fids, Context.TagFamilies.get(alliance, currentLocation), now);
-    }
+        int[] goal = Context.TagFamilies.get(alliance, currentLocation);
+        readingTag = new int[4];
 
-    /**
-     * Each tag sits u inches left/right of the cluster center, so tan(tx_i) = (X + u_i) / R. With 2+ tags a line fit
-     * gives X / R (the center) and 1 / R at once; with 1 tag the range comes from the odometry hint.
-     */
-    private Double clusterBearing(List<LLResultTypes.FiducialResult> fids, int[] goal, long now) {
-        Arrays.fill(readingTag, 0);
-
+        double sum = 0, bestTa = 0;
         int n = 0;
-        double sumU = 0, sumT = 0, sumUU = 0, sumUT = 0, bestTa = 0;
 
         for (LLResultTypes.FiducialResult f : fids) {
             int id = f.getFiducialId();
             if (!isGoalTag(goal, id)) continue;
 
-            double u = Context.clusterOffsetIn(id) * (TurretTune.clusterMirrored ? -1 : 1);
-            double t = Math.tan(Math.toRadians(f.getTargetXDegrees()));
-
-            sumU += u;
-            sumT += t;
-            sumUU += u * u;
-            sumUT += u * t;
+            Double offset = Context.tagMap.get(id);
+            sum += f.getTargetXDegrees() + (offset == null ? 0 : offset / 2);
             bestTa = Math.max(bestTa, f.getTargetArea());
 
             if (n < readingTag.length) readingTag[n] = id;
@@ -374,29 +321,9 @@ public class Turret extends Mechanism {
         }
 
         if (n == 0) return null;
+
         seenTa = bestTa;
-
-        boolean hintFresh = rangeHintIn > 0 && now - rangeHintNs < HINT_MAX_AGE_NS;
-        double hint = hintFresh ? rangeHintIn : TurretTune.defaultRangeIn;
-
-        double centerT = (sumT - sumU / hint) / n;
-        rangeEstimateIn = hint;
-
-        double denom = n * sumUU - sumU * sumU;
-        if (n >= 2 && denom > 1e-6) {
-            double slope = (n * sumUT - sumU * sumT) / denom;
-            double range = slope > 1e-9 ? 1.0 / slope : Double.NaN;
-
-            boolean plausible = range >= MIN_FIT_RANGE_IN && range <= MAX_FIT_RANGE_IN;
-            boolean agrees = !hintFresh || Math.abs(range - hint) <= 0.5 * hint;
-
-            if (plausible && agrees) {
-                centerT = (sumT - slope * sumU) / n;
-                rangeEstimateIn = range;
-            }
-        }
-
-        return Math.toDegrees(Math.atan(centerT));
+        return sum / n;
     }
 
     private static boolean isGoalTag(int[] goal, int id) {
@@ -433,19 +360,19 @@ public class Turret extends Mechanism {
     }
 
     private double center() {
-        return constants.WRAP_CENTER + TurretTune.centerTrimDeg;
+        return constants.WRAP_CENTER + Tune.centerTrimDeg;
     }
 
     public static double ratio() {
-        return Math.abs(TurretTune.turretPerServo);
+        return Math.abs(Tune.turretPerServo);
     }
 
     private static double rangeDeg() {
-        return TurretTune.servoRangeDeg * ratio();
+        return SERVO_RANGE_DEG * ratio();
     }
 
     private static double slewDps() {
-        return TurretTune.servoSpeedDps * ratio();
+        return Tune.servoSpeedDps * ratio();
     }
 
     /** Turret angle (deg) -> servo position [0, 1]. */
@@ -474,33 +401,26 @@ public class Turret extends Mechanism {
     }
 
     /**
-     * Wraps into [minAngle, maxAngle] (+-360). A target inside the dead zone goes to the nearer limit (circular distance),
-     * and WRAP_TOLERANCE of hysteresis favors the side the turret is already on so it never flips 300 deg over noise.
+     * Wraps into [minAngle, maxAngle] (+-360). Hysteresis keeps it from flipping 360 deg every loop
+     * when the target sits at the limit. The servo range is under 360, so targets in the dead zone are clamped.
      */
     private double wrapToSafeRange(double angle) {
         if (Double.isNaN(angle) || Double.isInfinite(angle)) return lastWrappedTarget;
 
         double lo = minAngle(), hi = maxAngle();
-        double base = Util.wrapDeg(angle);
 
-        double best = Double.NaN;
-        for (int k = -1; k <= 1; k++) {
-            double c = base + 360.0 * k;
-            if (c < lo || c > hi) continue;
-            if (Double.isNaN(best) || Math.abs(c - lastWrappedTarget) < Math.abs(best - lastWrappedTarget)) best = c;
-        }
+        double wrapped = angle;
+        while (wrapped > hi) wrapped -= 360;
+        while (wrapped < lo) wrapped += 360;
+        if (wrapped > hi) wrapped = clampToLimits(angle);
 
-        if (Double.isNaN(best)) {
-            double dLo = Math.abs(Util.wrapDeg(base - lo));
-            double dHi = Math.abs(Util.wrapDeg(base - hi));
+        double alt = wrapped + (wrapped < lastWrappedTarget ? 360 : -360);
+        boolean inRange = alt >= lo && alt <= hi;
+        boolean closerToLast = Math.abs(alt - lastWrappedTarget) + constants.WRAP_TOLERANCE
+                < Math.abs(wrapped - lastWrappedTarget);
+        if (inRange && closerToLast) wrapped = alt;
 
-            if (lastWrappedTarget >= (lo + hi) / 2) dHi -= constants.WRAP_TOLERANCE;
-            else dLo -= constants.WRAP_TOLERANCE;
-
-            best = dLo < dHi ? lo : hi;
-        }
-
-        lastWrappedTarget = best;
-        return best;
+        lastWrappedTarget = wrapped;
+        return wrapped;
     }
 }

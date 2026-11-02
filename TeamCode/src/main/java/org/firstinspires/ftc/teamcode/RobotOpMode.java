@@ -40,7 +40,10 @@ public class RobotOpMode extends OpMode {
         return Context.Alliance.RED;
     }
 
-    public String locationForOpMode() { return "Audience"; }
+    /** The field is rotationally symmetric, BLUE starts on the opposite side so its nearest hive opening is "Scoring". */
+    public String locationForOpMode() {
+        return allianceForOpMode() == Context.Alliance.BLUE ? "Scoring" : "Audience";
+    }
 
     @Override
     public void init() {

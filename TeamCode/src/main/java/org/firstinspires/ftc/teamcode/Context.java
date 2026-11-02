@@ -86,8 +86,8 @@ public class Context {
             boolean audience = compare(location, "Audience");
             if (!audience && !compare(location, "Scoring")) return null;
 
-            double xHive = ((HIVE_SPACING_IN / 2) * (alliance == Alliance.BLUE ? 1 : -1));
-            double x = FIELD_CENTER + xHive + HiveTune.xTrimIn;
+            double side = alliance == Alliance.BLUE ? 1 : -1;
+            double x = FIELD_CENTER + side * (HIVE_SPACING_IN / 2 - HiveTune.xTrimIn);
             double depth = OPENING_OFFSET_IN + HiveTune.depthTrimIn;
             double y = FIELD_CENTER + (audience ? -depth : depth);
 
@@ -455,7 +455,7 @@ public class Context {
     public static Context fromOwner(Util.Code code, HardwareMap hw) {
         Context.reset();
         Context.runtime = new Context();
-        Context.runtime.follower = org.firstinspires.ftc.teamcode.pedro.Constants.create(hw);
+        Context.runtime.hardwareMap = hw;
         Context.runtime.setOwner(code);
 
         return Context.runtime;

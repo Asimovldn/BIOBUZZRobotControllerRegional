@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.systems.hardware;
 
-import static com.pedropathing.ivy.groups.Groups.parallel;
-
 import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -56,9 +54,19 @@ public class Shooter extends Mechanism {
         }
     }
 
+    /** Callers pass a negative value for a forward spin, kept for compatibility. Prefer {@link #spinTo(double)}. */
     @Override
     public void setTargetVelocity(double v) {
         super.setTargetVelocity(-v);
+    }
+
+    /** Positive ticks per second. */
+    public void spinTo(double ticksPerSecond) {
+        setTargetVelocity(-Math.abs(ticksPerSecond));
+    }
+
+    public void stopFlywheel() {
+        super.setTargetVelocity(0);
     }
 
     @Override
@@ -81,42 +89,64 @@ public class Shooter extends Mechanism {
         if (Tuning.kI > 0) pid.setIntegralClamp(0.3 / Tuning.kI);
 
         double error = targetVelocity - flywheel.getVelocity();
-        double output = (Tuning.kV * targetVelocity)
-                + (pid.calculate(error));
+        double feedforward = Tuning.kV * targetVelocity;
+        double output = feedforward * voltageScale + pid.calculate(error);
 
         flywheel.setPower(Range.clip(output, -1, 1));
     }
 
     private void updateVoltage() {
         long now = System.nanoTime();
-        if (battery == null || now - lastVoltageNs < 250_000_000L) return; // Runs around 4 times per second
+        if (battery == null || now - lastVoltageNs < 250_000_000L) return;
 
         lastVoltageNs = now;
         double v = battery.getVoltage();
         if (v > 5) voltageScale = Range.clip(Tuning.nominalVoltage / v, 0.8, 1.4);
     }
 
+    /** Within readyTolerance below the target and at most maxOvershoot above it. */
     public boolean isReady() {
-        return targetVelocity != 0 && atSpeed(targetVelocity, Tuning.readyTolerance) && !(Math.abs(Speed()) > Math.abs(targetVelocity) && Math.abs(Speed()) - Math.abs(targetVelocity) < Tuning.maxOvershoot);
+        if (flywheel == null || targetVelocity == 0) return false;
+
+        double diff = Math.abs(Speed()) - Math.abs(targetVelocity);
+        return diff > -Tuning.readyTolerance && diff < Tuning.maxOvershoot;
     }
 
+    public void setFeeding(boolean on) {
+        if (feeder != null) feeder.setPower(on ? Tuning.feedPower : 0);
+    }
+
+    public boolean isFeeding() {
+        return feeder != null && Math.abs(feeder.getPower()) > 0.05;
+    }
+
+    /** Stops flywheel and feeder immediately. */
+    public void brakeNow() {
+        super.setTargetVelocity(0);
+        if (flywheel != null) flywheel.setPower(0);
+        if (feeder != null) feeder.setPower(0);
+        pid.reset();
+        spinning = false;
+    }
+
+    /** Feeds only while the flywheel is ready. Never finishes by itself, cancel it or use {@link #setFeeding(boolean)}. */
     public Command enableLaunch() {
         return Command.build()
-                .setExecute(() -> {
-                    if (!isReady()) return;
-                    feeder.setPower(Tuning.feedPower);
-                })
+                .setExecute(() -> setFeeding(isReady()))
                 .requiring(this);
     }
 
     public Command disableLaunch() {
         return Command.build()
-                .setExecute(() -> feeder.setPower(0))
-                .setDone(() -> Math.abs(feeder.getPower()) < 0.1);
+                .setExecute(() -> setFeeding(false))
+                .setDone(() -> !isFeeding());
     }
 
+    /** The brake runs when the command runs, not when it is built. */
     public Command fullBrake() {
-        setTargetVelocity(0);
-        return parallel(disableLaunch());
+        return Command.build()
+                .setStart(this::brakeNow)
+                .setExecute(this::brakeNow)
+                .setDone(() -> true);
     }
 }
