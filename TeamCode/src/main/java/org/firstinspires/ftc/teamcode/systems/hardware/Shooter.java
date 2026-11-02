@@ -54,7 +54,7 @@ public class Shooter extends Mechanism {
         }
     }
 
-    /** Callers pass a negative value for a forward spin, kept for compatibility. Prefer {@link #spinTo(double)}. */
+    /** Callers pass a negative value for a forward spin. */
     @Override
     public void setTargetVelocity(double v) {
         super.setTargetVelocity(-v);

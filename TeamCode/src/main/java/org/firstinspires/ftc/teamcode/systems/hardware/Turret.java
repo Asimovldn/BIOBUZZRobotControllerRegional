@@ -403,7 +403,7 @@ public class Turret extends Mechanism {
     /**
      * Wraps into [minAngle, maxAngle] (+-360). Hysteresis keeps it from flipping 360 deg every loop
      * when the target sits at the limit. The servo range is under 360, so targets in the dead zone are clamped.
-     */
+    */
     private double wrapToSafeRange(double angle) {
         if (Double.isNaN(angle) || Double.isInfinite(angle)) return lastWrappedTarget;
 
