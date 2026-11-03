@@ -36,7 +36,7 @@ public class Turret extends Mechanism {
     }
 
     private static final String SERVO_NAME = "turret";
-    private static final int SERVO_RANGE_DEG = 320;
+    private static final int SERVO_RANGE_DEG = 300;
 
     private static final double PWM_MIN_US = 500, PWM_MAX_US = 2500;
     private static final double SERVO_MIN_POS = 0, SERVO_MAX_POS = 1;
@@ -158,7 +158,7 @@ public class Turret extends Mechanism {
     public double getAngle() { return currentAngle; }
     public double getError() { return err; }
     public double getTargetAngle() { return targetAngle; }
-    public double getServoPosition() { return angleToServo(currentAngle); }
+    public double getServoPosition() { return servo.getPosition(); }
     public double getTa() { return seenTa; }
     public double getDeltatime() { return deltatime; }
     public Context.Alliance getAlliance() { return alliance; }

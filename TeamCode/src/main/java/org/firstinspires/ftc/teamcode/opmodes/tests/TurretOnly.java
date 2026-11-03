@@ -34,11 +34,6 @@ public class TurretOnly extends RobotOpMode {
         telemetry.addData("Location: ", getTurret().currentLocation);
         telemetry.addData("Reading Tag: ", Arrays.toString(getTurret().readingTag));
 
-        if (Context.tagMap.get(getTurret().readingTag[0]) != null) {
-            telemetry.addData("Tag offset from cluster center (in): ", Context.tagMap.get(getTurret().readingTag[0]));
-            telemetry.addData("Range estimate (in): ", getTurret().getRangeEstimate());
-        }
-
         telemetry.update();
     }
 }

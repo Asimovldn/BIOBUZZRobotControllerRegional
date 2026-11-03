@@ -186,7 +186,7 @@ public abstract class Auto extends RobotOpMode {
         Pose pose = follower.pose();
         sotm.update(pose, follower.velocity());
 
-        turret.setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
+        // turret.setRangeHit(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
 
         Double vision = turret.consumeVisionAngle();
         if (vision != null && AutoTune.learnBias) sotm.learnBias(vision, pose, goal);

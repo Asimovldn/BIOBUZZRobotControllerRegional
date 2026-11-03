@@ -28,7 +28,7 @@ import java.util.Locale;
 
 @TeleOp(name = "SOTM Red", group = "TeleOp")
 public class SOTMTeleOp extends RobotOpMode {
-    private static final double READY_TURRET_DEG = 1.5;
+    private static final double READY_TURRET_DEG = 4;
 
     private static final Pose resetPoseA = new Pose(10, 132, Math.toRadians(270));
     private static final Pose resetPoseB = new Pose(59, 8, Math.toRadians(90));
@@ -90,7 +90,7 @@ public class SOTMTeleOp extends RobotOpMode {
 
 
         Pose goal = goal();
-        if (goal != null) getTurret().setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
+        // if (goal != null) getTurret().setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
 
         Double visionAngle = getTurret().consumeVisionAngle();
         if (visionAngle != null && goal != null && sotmEnabled) sotm.learnBias(visionAngle, pose, goal);
@@ -124,7 +124,7 @@ public class SOTMTeleOp extends RobotOpMode {
         hood.setServoToPoses(hood.angleToServo(!sotm.table.isEmpty() && hasShot && !manualOnly ? shot.hood : currAngle));
 
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
-        getShooter().setTargetVelocity(spinEnabled ? -velocity : 0);
+        getShooter().spinTo(spinEnabled ? velocity : 0);
 
         getIntake().setThrottle(gamepad2.left_stick_y);
 
