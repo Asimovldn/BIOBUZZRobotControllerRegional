@@ -20,8 +20,13 @@ public class ShotSolver {
 
     public int iterations = 16;
 
-    /** Damping of the time-of-flight iteration */
     public double damp = 0.5;
+
+    public double rightX = 1, rightY = 0;
+
+    public double lateralGain = 0.1;
+
+    public double maxLateralShift = 6;
 
     public ShotSolver(ShotTable table) {
         this.table = table;
@@ -41,14 +46,19 @@ public class ShotSolver {
         double svx = vx - omega * ry;
         double svy = vy + omega * rx;
 
-        double ax = goalX, ay = goalY;
+        double lateral = (sx - goalX) * rightX + (sy - goalY) * rightY;
+        double shift = Math.max(-maxLateralShift, Math.min(maxLateralShift, -lateralGain * lateral));
+        double tx = goalX + rightX * shift;
+        double ty = goalY + rightY * shift;
+
+        double ax = tx, ay = ty;
         double d = Math.hypot(ax - sx, ay - sy);
         ShotTable.Entry e = table.get(d);
         double tof = e.tof;
 
         for (int i = 0; i < iterations; i++) {
-            ax = goalX - svx * tof;
-            ay = goalY - svy * tof;
+            ax = tx - svx * tof;
+            ay = ty - svy * tof;
             d = Math.hypot(ax - sx, ay - sy);
             e = table.get(d);
             tof += damp * (e.tof - tof);
