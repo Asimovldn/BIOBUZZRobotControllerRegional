@@ -87,7 +87,7 @@ public class Context {
             if (!audience && !compare(location, "Scoring")) return null;
 
             double side = alliance == Alliance.BLUE ? 1 : -1;
-            double x = FIELD_CENTER + side * (HIVE_SPACING_IN / 2 - HiveTune.xTrimIn);
+            double x = FIELD_CENTER + (HIVE_SPACING_IN / 2 - HiveTune.xTrimIn) * side;
             double depth = OPENING_OFFSET_IN + HiveTune.depthTrimIn;
             double y = FIELD_CENTER + (audience ? -depth : depth);
 

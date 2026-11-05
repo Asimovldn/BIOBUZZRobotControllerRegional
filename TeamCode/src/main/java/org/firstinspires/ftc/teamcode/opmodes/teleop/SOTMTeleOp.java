@@ -121,7 +121,9 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad1.aWasPressed()) getFollower().setPose(forAlliance(resetPoseB));
         if (gamepad1.bWasPressed()) getFollower().setPose(forAlliance(resetPoseA));
 
-        hood.setServoToPoses(hood.angleToServo(!sotm.table.isEmpty() && hasShot && !manualOnly ? shot.hood : currAngle));
+        if (gamepad1.rightStickButtonWasPressed()) {
+            hood.alter();
+        }
 
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
         getShooter().spinTo(spinEnabled ? velocity : 0);
@@ -162,6 +164,7 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Omega (rad/s)", sotm.omega());
         telemetry.addData("Servo ", getTurret().getServoPosition());
         telemetry.addData("Runtime Owner", runtime.owner);
+        telemetry.addData("Flower Angle: ", hood.servo.getPosition());
 
         if (hasShot) {
             telemetry.addData("Distance", shot.distance);
