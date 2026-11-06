@@ -19,9 +19,9 @@ public class Shooter extends Mechanism {
         public static double kD = 0;
         public static double kF = 0;
         public static double kI = 0;
-        public static double kP = 15;
+        public static double kP = 25;
         public static double kS = 0;
-        public static double kV = 0.995;
+        public static double kV = 0.996;
         public static double maxOvershoot = 20;
         public static double nominalVoltage = 12;
         public static double readyTolerance = 30;

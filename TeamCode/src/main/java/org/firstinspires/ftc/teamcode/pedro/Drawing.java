@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode.pedro;
 
+import static com.pedropathing.api.Paths.line;
+import static com.pedropathing.paths.interpolator.Interpolator.linear;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -25,9 +28,10 @@ public class Drawing {
     private static final int MAX_HISTORY = 500;
     private static final int PATH_SAMPLES = 100;
 
-    private static final String ROBOT_LOOK = "#3F51B5";
-    private static final String HISTORY_LOOK = "#4CAF50";
-    private static final String POSE_LOOK = "#6693F5";
+    public static final String ROBOT_LOOK = "#3F51B5";
+    public static final String HISTORY_LOOK = "#4CAF50";
+    public static final String POSE_LOOK = "#6693F5";
+    public static final String OFFSET_LOOK = "#DE0A26";
 
     private static final Deque<Pose> poseHistory = new ArrayDeque<>();
 
@@ -93,6 +97,15 @@ public class Drawing {
 
     public static void drawAim(Path path) {
         drawPath(path, POSE_LOOK);
+    }
+
+    public static void drawOffset(Path path) {
+        drawPath(path, OFFSET_LOOK);
+    }
+
+    public static void drawOffset(Pose bot, Pose aim) {
+        drawOffset(line(bot, aim).constant(bot));
+        drawPose(aim, OFFSET_LOOK);
     }
 
     public static void drawPath(Path path, String color) {
@@ -218,7 +231,7 @@ public class Drawing {
         packet = new TelemetryPacket();
     }
 
-    public static void drawPose(Pose pose) {
+    public static void drawPose(Pose pose, String look) {
         if (!isValidPose(pose)) {
             return;
         }
@@ -229,7 +242,7 @@ public class Drawing {
         double y = pose.y();
         double heading = pose.heading();
 
-        canvas.setStroke(POSE_LOOK);
+        canvas.setStroke(look);
         canvas.setStrokeWidth(1);
         canvas.strokeCircle(fx(x), fy(y), ROBOT_RADIUS);
 

@@ -43,6 +43,10 @@ public class SOTM {
         vx = vy = omega = 0;
     }
 
+    public double lateral() {
+        return solver.lateral;
+    }
+
     public void resetBias() {
         bias = 0;
     }

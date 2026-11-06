@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.systems.sotm;
 
+import com.acmerobotics.dashboard.config.Config;
+
 public class ShotSolver {
     public static class Solution {
         public boolean valid;
@@ -13,7 +15,7 @@ public class ShotSolver {
     public final ShotTable table;
 
     /** seconds between the pose sample and the ball leaving the shooter. */
-    public double latency = 0.06;
+    public double latency = 0.06, lateral;
 
     /** inches */
     public double offsetX = -5, offsetY = 0;
@@ -22,11 +24,14 @@ public class ShotSolver {
 
     public double damp = 0.5;
 
-    public double rightX = 1, rightY = 0;
 
-    public double lateralGain = 0.1;
-
-    public double maxLateralShift = 6;
+    @Config
+    public static class SolverTune {
+        public static double lateralGain = -0.04;
+        public static double maxLateralShift = 15;
+        public static double rightX = -1;
+        public static double rightY = 0;
+    }
 
     public ShotSolver(ShotTable table) {
         this.table = table;
@@ -46,10 +51,10 @@ public class ShotSolver {
         double svx = vx - omega * ry;
         double svy = vy + omega * rx;
 
-        double lateral = (sx - goalX) * rightX + (sy - goalY) * rightY;
-        double shift = Math.max(-maxLateralShift, Math.min(maxLateralShift, -lateralGain * lateral));
-        double tx = goalX + rightX * shift;
-        double ty = goalY + rightY * shift;
+        lateral = (sx - goalX) * SolverTune.rightX + (sy - goalY) * SolverTune.rightY;
+        double shift = Math.max(-SolverTune.maxLateralShift, Math.min(SolverTune.maxLateralShift, -SolverTune.lateralGain * lateral));
+        double tx = goalX + SolverTune.rightX * shift;
+        double ty = goalY + SolverTune.rightY * shift;
 
         double ax = tx, ay = ty;
         double d = Math.hypot(ax - sx, ay - sy);

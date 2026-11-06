@@ -22,18 +22,47 @@ public class RedSoloA extends Auto {
     public Command routine() {
         return sequential(
                 spin(true),
+                instant(() -> hood.set(hood.on())),
+
+                waitMs(400),
+
                 shoot(),
                 stopSpinUnlessKept(),
-                setIntake(1),
-                followPath("toGarden"),
-                waitMs(AutoTune.gardenDwellMs),
+
+                // garden routine
+                flowerRoutine("Audience"),
+
+                instant(() -> hood.set(hood.off())),
+
                 instant(() -> {
                     runtime.switchLocation();
                     autoSpin = true;
                 }),
-                followPath("toScoring"),
+
+                // second cycle
+
+                setIntake(1),
+                instant(() -> hood.set(hood.on())),
+                followPath("fromFlowerToFlower"),
+                waitMs(AutoTune.flowerRampMs),
                 shoot(),
-                spin(false)
+                stopSpinUnlessKept(),
+
+                // second flower
+
+                flowerRoutine("Scoring"),
+
+                // third cycle
+                shoot(),
+                setIntake(1),
+                waitMs(150),
+                shoot(700),
+                stopSpinUnlessKept(),
+
+                // park
+
+                parkRoutine(),
+                stopSpin()
         );
     }
 }

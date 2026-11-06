@@ -28,7 +28,7 @@ public class Hood extends Mechanism {
 
     @Config
     public static class FlowerTune {
-        public static double alpha = 0.65;
+        public static double alpha = 0.24;
     }
 
     public double MIN_ANGLE = 20, MAX_ANGLE = 40;
@@ -42,11 +42,11 @@ public class Hood extends Mechanism {
     }
 
     public double on() {
-        return angleToServo(MAX_ANGLE);
+        return 0;
     }
 
     public double off() {
-        return angleToServo(MIN_ANGLE);
+        return 1 - FlowerTune.alpha;
     }
 
     public void alter() {

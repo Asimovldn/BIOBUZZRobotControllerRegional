@@ -1,12 +1,16 @@
 package org.firstinspires.ftc.teamcode.opmodes.auto;
 
+import static com.pedropathing.api.Paths.curve;
 import static com.pedropathing.api.Paths.line;
+import static com.pedropathing.ivy.commands.Commands.infinite;
 import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import static com.pedropathing.ivy.groups.Groups.race;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
+
+import static org.firstinspires.ftc.teamcode.util.Util.compare;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
@@ -45,10 +49,13 @@ public abstract class Auto extends RobotOpMode {
     @Config
     public static class AutoTune {
         public static double readyTimeoutMs = 2500;
-        public static double feedMs = 2000;
-        public static double pathTimeoutMs = 6000;
-        public static double gardenDwellMs = 400;
-        public static double turretReadyDeg = 2;
+        public static double flowerRampMs = 60;
+        public static double feedMs = 900;
+        public static double shootMs = 2100;
+        public static double delayShootMs = 135;
+        public static double pathTimeoutMs = 3600;
+        public static double gardenDwellMs = 300;
+        public static double turretReadyDeg = 1.25;
         public static boolean holdAfterPath = true;
         public static boolean keepSpinning = true;
         public static boolean learnBias = true;
@@ -196,7 +203,6 @@ public abstract class Auto extends RobotOpMode {
         if (shot == null) return;
 
         turret.setTrackAngle(sotm.turretAngleDeg(shot));
-        hood.setServoToPoses(hood.angleToServo(shot.hood));
 
         if (autoSpin) shooter.spinTo(shot.velocity);
     }
@@ -215,28 +221,108 @@ public abstract class Auto extends RobotOpMode {
         });
     }
 
+    protected Command manual(double f, double s, double t) {
+        return instant(() -> follower.manual(f, s, t));
+    }
+
+    protected Command parkRoutine() {
+        return sequential(
+                followPath("ParkPose")
+        );
+    }
+
+    protected Command flowerRoutine(String where) {
+        if (compare(where, "Audience")) {
+            return sequential(
+                    followPath("preFlowerAudience"),
+                    setIntake(0),
+                    instant(() -> hood.set(hood.off())),
+                    waitMs(AutoTune.flowerRampMs),
+                    followPath("flowerAudience"),
+                    setIntake(1),
+                    waitMs(AutoTune.feedMs * 0.8),
+                    setIntake(0.5),
+                    followPath("backupAudience"),
+                    waitMs(AutoTune.flowerRampMs),
+                    setIntake(1),
+                    followPath("flowerAudience")
+            );
+        } else {
+            return sequential(
+                    followPath("preFlowerScoring"),
+                    setIntake(0),
+                    instant(() -> hood.set(hood.off())),
+                    waitMs(AutoTune.flowerRampMs),
+                    followPath("flowerScoring"),
+                    setIntake(1),
+                    waitMs(AutoTune.feedMs * 0.8),
+                    setIntake(0.5),
+                    followPath("backupScoring"),
+                    waitMs(AutoTune.flowerRampMs),
+                    setIntake(1),
+                    followPath("flowerScoring")
+            );
+        }
+    }
+
+    protected Command gardenRoutine() {
+        return sequential(
+                followPath("preGarden"),
+                setIntake(1),
+                instant(() -> hood.set(hood.on())),
+                followPath("toGarden"),
+                waitMs(AutoTune.gardenDwellMs * 0.8),
+                instant(() -> hood.set(hood.off())),
+                followPath("backupGarden"),
+                setIntake(1),
+                instant(() -> hood.set(hood.on())),
+                followPath("toGarden")
+        );
+    }
+
     /** Waits for the flywheel and turret (with a timeout), then feeds for {@code feedMs}. */
     protected Command shoot() {
         return sequential(
                 race(waitUntil(this::readyToShoot), waitMs(AutoTune.readyTimeoutMs)),
+                waitMs(AutoTune.delayShootMs),
                 feed()
         );
     }
 
-    protected Command feed() {
-        final AtomicLong startNs = new AtomicLong();
+    protected Command shoot(double ms) {
+        return sequential(
+                race(waitUntil(this::readyToShoot), waitMs(AutoTune.readyTimeoutMs)),
+                waitMs(AutoTune.delayShootMs),
+                feed(ms)
+        );
+    }
 
-        return Command.build()
+    protected Command feed() {
+        return feed(AutoTune.shootMs);
+    }
+
+    protected Command feed(double ms) {
+        final AtomicLong startNs = new AtomicLong();
+        final AtomicLong lastPauseNs = startNs;
+        return infinite(() -> {
+                    shooter.setFeeding(readyToShoot());
+                    intake.setThrottle(1);
+                })
                 .setStart(() -> {
                     startNs.set(System.nanoTime());
                     intake.setThrottle(1);
                 })
-                .setExecute(() -> shooter.setFeeding(readyToShoot()))
-                .setDone(() -> (System.nanoTime() - startNs.get()) * 1e-6 >= AutoTune.feedMs)
+                .setDone(() -> (System.nanoTime() - startNs.get()) * 1e-6 >= ms)
                 .setEnd(c -> {
                     shooter.setFeeding(false);
                     intake.setThrottle(0);
                 });
+    }
+
+    protected Command flowerSwitch() {
+        return Command.build()
+                .setExecute(hood::alter)
+                .setDone(() -> true);
     }
 
     /** Follows a registered path with a timeout, then holds the end pose. */
@@ -255,12 +341,21 @@ public abstract class Auto extends RobotOpMode {
         return instant(() -> intake.setThrottle(power));
     }
 
+
+
     protected Command stopSpinUnlessKept() {
         return instant(() -> {
             if (!AutoTune.keepSpinning) {
                 autoSpin = false;
                 shooter.brakeNow();
             }
+        });
+    }
+
+    protected Command stopSpin() {
+        return instant(() -> {
+            autoSpin = false;
+            shooter.brakeNow();
         });
     }
 
@@ -279,6 +374,7 @@ public abstract class Auto extends RobotOpMode {
 
         telemetry.addData("Flywheel", shooter.Speed());
         telemetry.addData("Flywheel target", shooter.getTargetVelocity());
+        telemetry.addData("flower servo: ", hood.getPosition());
         telemetry.addData("Ready", readyToShoot());
         telemetry.update();
 
@@ -306,12 +402,36 @@ public abstract class Auto extends RobotOpMode {
             getter.clear();
 
             startPoseA = poseFactory.of(59, 8, 90);
-            gardenPose = poseFactory.of(9, 7, 180);
-            parkPoseA = poseFactory.of(133, 30, 180);
-            scoringPose = poseFactory.of(45, 120, 270);
+            gardenPose = poseFactory.of(12.7, 8.2, 180);
+            preFlowerScoring = poseFactory.of(47.5, 115, 90);
+            flowerScoringPose = poseFactory.of(47.5, 129.7, 90);
 
-            register("toGarden", line(startPoseA, gardenPose).linear(startPoseA, gardenPose));
-            register("toScoring", line(gardenPose, scoringPose).linear(gardenPose, scoringPose));
+            preFlowerAudience = poseFactory.of(26, 47.5, 180);
+            flowerAudiencePose = poseFactory.of(15, 47.5, 180);
+
+            preGardenPose = poseFactory.of(26, 8.7, 180);
+            parkPoseA = poseFactory.of(11.4, 114, 0);
+            scoringPose = poseFactory.of(48.25, 125, 270);
+
+            register("toGarden", line(preGardenPose, gardenPose).linear(preGardenPose, gardenPose));
+            register("preGarden", line(startPoseA, preGardenPose).tangent());
+
+            register("fromFlowerToFlower", curve(flowerAudiencePose,  new Pose(18.2, 99), flowerScoringPose).tangent());
+
+            register("toScoring", curve(flowerAudiencePose, new Pose(18.2, 99), scoringPose).linear(flowerAudiencePose, scoringPose));
+            register("fromGardenScore", curve(gardenPose, new Pose(17.45, 80.7), scoringPose).reverseTangent());
+
+            register("preFlowerScoring", line(scoringPose, preFlowerScoring).linear(scoringPose, preFlowerScoring));
+            register("flowerScoring", line(preFlowerScoring, flowerScoringPose).linear(preFlowerScoring, flowerScoringPose));
+
+            register("preFlowerAudience", line(startPoseA, preFlowerAudience).linear(startPoseA, preFlowerAudience));
+            register("flowerAudience", line(preFlowerAudience, flowerAudiencePose).linear(preFlowerAudience, flowerAudiencePose));
+
+            register("backupAudience", line(flowerAudiencePose, preFlowerAudience).linear(preFlowerAudience, flowerAudiencePose));
+            register("backupScoring", line(flowerScoringPose, preFlowerScoring).linear(preFlowerScoring, flowerScoringPose));
+            register("backupGarden", line(gardenPose, preGardenPose).linear(gardenPose, preGardenPose));
+
+            register("ParkPose", line(preFlowerScoring, parkPoseA).linear(preFlowerScoring, parkPoseA));
 
             builded = true;
         }
@@ -325,6 +445,9 @@ public abstract class Auto extends RobotOpMode {
         }
 
         public static void register(String name, Path path) {
+            if (getter.get(name) != null) {
+                getter.replace(name, path);
+            }
             getter.put(name, path);
         }
 
@@ -346,6 +469,8 @@ public abstract class Auto extends RobotOpMode {
 
         public Pose startPoseA;
         public Pose parkPoseA;
-        public Pose gardenPose, scoringPose;
+        public Pose gardenPose, scoringPose, preGardenPose, flowerScoringPose, preFlowerScoring;
+
+        public Pose preFlowerAudience, flowerAudiencePose;
     }
 }

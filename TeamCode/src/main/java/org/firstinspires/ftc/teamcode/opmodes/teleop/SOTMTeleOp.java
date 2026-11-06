@@ -178,15 +178,16 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Flywheel", getShooter().Speed());
         telemetry.addData("Flywheel target", getShooter().getTargetVelocity());
         telemetry.addData("Ready", ready);
+        telemetry.addData("Lateral Pointing To: ", sotm.lateral());
         telemetry.update();
 
         Drawing.drawDebug(follower);
 
         Drawing.drawPose(
-                goal()
+                goal(), Drawing.POSE_LOOK
         );
 
-        Drawing.drawAim(line(pose, goal()));
+        Drawing.drawOffset(pose, new Pose(shot.aimX, shot.aimY));
     }
 
     private void logShot() {
