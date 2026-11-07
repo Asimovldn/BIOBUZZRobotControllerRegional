@@ -403,11 +403,11 @@ public abstract class Auto extends RobotOpMode {
 
             startPoseA = poseFactory.of(59, 8, 90);
             gardenPose = poseFactory.of(12.7, 8.2, 180);
-            preFlowerScoring = poseFactory.of(49.5, 115, 90);
-            flowerScoringPose = poseFactory.of(49.5, 129.2, 90);
+            preFlowerScoring = poseFactory.of(42.5, 115, 90);
+            flowerScoringPose = poseFactory.of(42.5, 129.2, 90);
 
             preFlowerAudience = poseFactory.of(26, 49.5, 180);
-            flowerAudiencePose = poseFactory.of(14, 49.5, 180);
+            flowerAudiencePose = poseFactory.of(13, 49.5, 180);
 
             preGardenPose = poseFactory.of(26, 8.7, 180);
             parkPoseA = poseFactory.of(11.4, 114, 0);
