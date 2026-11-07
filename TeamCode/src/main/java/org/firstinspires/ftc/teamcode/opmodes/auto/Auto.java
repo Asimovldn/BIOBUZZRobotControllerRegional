@@ -53,7 +53,7 @@ public abstract class Auto extends RobotOpMode {
         public static double feedMs = 900;
         public static double shootMs = 2100;
         public static double delayShootMs = 135;
-        public static double pathTimeoutMs = 3600;
+        public static double pathTimeoutMs = 2500;
         public static double gardenDwellMs = 300;
         public static double turretReadyDeg = 1.25;
         public static boolean holdAfterPath = true;
@@ -236,7 +236,7 @@ public abstract class Auto extends RobotOpMode {
             return sequential(
                     followPath("preFlowerAudience"),
                     setIntake(0),
-                    instant(() -> hood.set(hood.off())),
+                    instant(() -> hood.set(hood.on())),
                     waitMs(AutoTune.flowerRampMs),
                     followPath("flowerAudience"),
                     setIntake(1),
@@ -251,7 +251,7 @@ public abstract class Auto extends RobotOpMode {
             return sequential(
                     followPath("preFlowerScoring"),
                     setIntake(0),
-                    instant(() -> hood.set(hood.off())),
+                    instant(() -> hood.set(hood.on())),
                     waitMs(AutoTune.flowerRampMs),
                     followPath("flowerScoring"),
                     setIntake(1),
@@ -403,11 +403,11 @@ public abstract class Auto extends RobotOpMode {
 
             startPoseA = poseFactory.of(59, 8, 90);
             gardenPose = poseFactory.of(12.7, 8.2, 180);
-            preFlowerScoring = poseFactory.of(47.5, 115, 90);
-            flowerScoringPose = poseFactory.of(47.5, 129.7, 90);
+            preFlowerScoring = poseFactory.of(49.5, 115, 90);
+            flowerScoringPose = poseFactory.of(49.5, 129.2, 90);
 
-            preFlowerAudience = poseFactory.of(26, 47.5, 180);
-            flowerAudiencePose = poseFactory.of(15, 47.5, 180);
+            preFlowerAudience = poseFactory.of(26, 49.5, 180);
+            flowerAudiencePose = poseFactory.of(14, 49.5, 180);
 
             preGardenPose = poseFactory.of(26, 8.7, 180);
             parkPoseA = poseFactory.of(11.4, 114, 0);
@@ -421,7 +421,7 @@ public abstract class Auto extends RobotOpMode {
             register("toScoring", curve(flowerAudiencePose, new Pose(18.2, 99), scoringPose).linear(flowerAudiencePose, scoringPose));
             register("fromGardenScore", curve(gardenPose, new Pose(17.45, 80.7), scoringPose).reverseTangent());
 
-            register("preFlowerScoring", line(scoringPose, preFlowerScoring).linear(scoringPose, preFlowerScoring));
+            register("preFlowerScoring", line(flowerScoringPose, preFlowerScoring).tangent());
             register("flowerScoring", line(preFlowerScoring, flowerScoringPose).linear(preFlowerScoring, flowerScoringPose));
 
             register("preFlowerAudience", line(startPoseA, preFlowerAudience).linear(startPoseA, preFlowerAudience));

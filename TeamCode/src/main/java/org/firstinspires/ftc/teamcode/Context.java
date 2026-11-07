@@ -63,7 +63,8 @@ public class Context {
         @Config
         public static class HiveTune {
             public static double depthTrimIn = 0;
-            public static double xTrimIn = -2;
+            public static double xTrimIn = 0;
+            public static double scoringTrim = 2;
         }
 
         public static final double HIVE_SPACING_IN = 25.5;
@@ -88,6 +89,9 @@ public class Context {
 
             double side = alliance == Alliance.BLUE ? 1 : -1;
             double x = FIELD_CENTER + (HIVE_SPACING_IN / 2 - HiveTune.xTrimIn) * side;
+            if (!audience) {
+                x += HiveTune.scoringTrim;
+            }
             double depth = OPENING_OFFSET_IN + HiveTune.depthTrimIn;
             double y = FIELD_CENTER + (audience ? -depth : depth);
 

@@ -39,11 +39,14 @@ public class run extends LinearOpMode {
                 } else if (gamepad2.dpadRightWasPressed() || gamepad1.dpadRightWasPressed()) {
                     servo.setPosition(1);
                 }
-            } else {
-                hood.setServoToPoses(hood.angleToServo(currAngle));
+            }
 
-                if (gamepad2.dpadUpWasPressed()) currAngle++;
-                if (gamepad2.dpadDownWasPressed()) currAngle--;
+            if (gamepad2.rightStickButtonWasPressed() || gamepad1.rightStickButtonWasPressed()) {
+                hood.alter();
+            };
+
+            if (gamepad2.leftStickButtonWasPressed()) {
+                hood.maxUp();
             }
 
             telemetry.addData("Servo Pos: ", servo.getPosition());

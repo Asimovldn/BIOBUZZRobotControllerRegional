@@ -27,8 +27,8 @@ public class ShotSolver {
 
     @Config
     public static class SolverTune {
-        public static double lateralGain = -0.04;
-        public static double maxLateralShift = 15;
+        public static double lateralGain = 0.02;
+        public static double maxLateralShift = 6;
         public static double rightX = -1;
         public static double rightY = 0;
     }

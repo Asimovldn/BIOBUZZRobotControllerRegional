@@ -13,13 +13,13 @@ public class Hood extends Mechanism {
 
     @Override
     public void setup() {
-        servo = runtime.hardwareMap.get(Servo.class, "flower");
-        servo.setPosition(1);
+        setup(runtime.hardwareMap);
     }
 
     public void setup(HardwareMap hw) {
+        flag = false;
         servo = hw.get(Servo.class, "flower");
-        servo.setPosition(1);
+        servo.setPosition(off());
     }
 
     public double getPosition() {
@@ -32,7 +32,7 @@ public class Hood extends Mechanism {
     }
 
     public double MIN_ANGLE = 20, MAX_ANGLE = 40;
-    public boolean flag = false;
+    public boolean flag = true;
 
     /** Returns [left, right] */
     public double angleToServo(double ang) {
@@ -41,12 +41,16 @@ public class Hood extends Mechanism {
         return 1 + (((angle - MIN_ANGLE) * (FlowerTune.alpha - 1)) / (MAX_ANGLE - MIN_ANGLE));
     }
 
-    public double on() {
-        return 0;
+    public double off() {
+        return 0.85;
     }
 
-    public double off() {
-        return 1 - FlowerTune.alpha;
+    public double on() {
+        return FlowerTune.alpha;
+    }
+
+    public double extend() {
+        return 1;
     }
 
     public void alter() {
@@ -57,6 +61,11 @@ public class Hood extends Mechanism {
         }
 
         flag = !flag;
+    }
+
+    public void maxUp() {
+        servo.setPosition(extend());
+        flag = false;
     }
 
     public void set(double p) {

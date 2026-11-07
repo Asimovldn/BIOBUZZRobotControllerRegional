@@ -22,7 +22,7 @@ public class RedSoloA extends Auto {
     public Command routine() {
         return sequential(
                 spin(true),
-                instant(() -> hood.set(hood.on())),
+                instant(() -> hood.set(hood.off())),
 
                 waitMs(400),
 
@@ -31,8 +31,6 @@ public class RedSoloA extends Auto {
 
                 // garden routine
                 flowerRoutine("Audience"),
-
-                instant(() -> hood.set(hood.off())),
 
                 instant(() -> {
                     runtime.switchLocation();
@@ -62,6 +60,7 @@ public class RedSoloA extends Auto {
                 // park
 
                 parkRoutine(),
+                instant(() -> hood.maxUp()),
                 stopSpin()
         );
     }

@@ -125,6 +125,10 @@ public class SOTMTeleOp extends RobotOpMode {
             hood.alter();
         }
 
+        if (gamepad1.leftStickButtonWasPressed()) {
+            hood.maxUp();
+        }
+
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
         getShooter().spinTo(spinEnabled ? velocity : 0);
 
