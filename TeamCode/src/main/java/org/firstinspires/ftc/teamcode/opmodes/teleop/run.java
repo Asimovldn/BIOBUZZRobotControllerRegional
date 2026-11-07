@@ -2,13 +2,10 @@ package org.firstinspires.ftc.teamcode.opmodes.teleop;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.AnalogSensor;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoImplEx;
 
 import org.firstinspires.ftc.teamcode.Context;
-import org.firstinspires.ftc.teamcode.systems.hardware.Hood;
+import org.firstinspires.ftc.teamcode.systems.hardware.Ramp;
 import org.firstinspires.ftc.teamcode.util.Util;
 
 /** Repos servo and reset runtime */
@@ -21,9 +18,9 @@ public class run extends LinearOpMode {
 
         Context ctx = Context.fromOwner(Util.Code.fromString("ReposServo"), hardwareMap);
 
-        Hood hood = new Hood();
+        Ramp ramp = new Ramp();
 
-        hood.setup(hardwareMap);
+        ramp.setup(hardwareMap);
 
         waitForStart();
 
@@ -42,15 +39,15 @@ public class run extends LinearOpMode {
             }
 
             if (gamepad2.rightStickButtonWasPressed() || gamepad1.rightStickButtonWasPressed()) {
-                hood.alter();
+                ramp.alter();
             };
 
             if (gamepad2.leftStickButtonWasPressed()) {
-                hood.maxUp();
+                ramp.maxUp();
             }
 
             telemetry.addData("Servo Pos: ", servo.getPosition());
-            telemetry.addData("Servo Pos Hood: ", hood.getPosition());
+            telemetry.addData("Servo Pos Hood: ", ramp.getPosition());
             telemetry.addData("Curr Angle: ", currAngle);
 
             updateTelemetry(telemetry);

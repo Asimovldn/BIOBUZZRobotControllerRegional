@@ -6,9 +6,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
-import org.firstinspires.ftc.teamcode.util.Util;
 
-public class Hood extends Mechanism {
+public class Ramp extends Mechanism {
     public Servo servo;
 
     @Override

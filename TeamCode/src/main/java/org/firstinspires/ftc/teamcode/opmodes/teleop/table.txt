@@ -1,28 +1,28 @@
 c3q
 dist = 58
 vel  = 1190
-hood = 29
+ramp = 29
 
 dist = 60
 vel  = 1210
-hood = 32
+ramp = 32
 
 dist = 64.5
 vel  = 1230
-hood = 37
+ramp = 37
 
 dist = 55
 vel  = 1240
-hood = 27
+ramp = 27
 
 dist = 43.7
 vel  = 1190
-hood = 23
+ramp = 23
 flight time = 0.51
 
 dist = 82
 vel  = 1270
-hood = 34.5
+ramp = 34.5
 
 TEORIA:
 A cada 2 inches, ganha-se 10 ticks/s e 2º.

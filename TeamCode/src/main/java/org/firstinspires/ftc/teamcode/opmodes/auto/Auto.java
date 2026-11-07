@@ -25,7 +25,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.RobotOpMode;
 import org.firstinspires.ftc.teamcode.pedro.Drawing;
-import org.firstinspires.ftc.teamcode.systems.hardware.Hood;
+import org.firstinspires.ftc.teamcode.systems.hardware.Ramp;
 import org.firstinspires.ftc.teamcode.systems.hardware.Intake;
 import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
@@ -54,8 +54,14 @@ public abstract class Auto extends RobotOpMode {
         public static double shootMs = 2100;
         public static double delayShootMs = 135;
         public static double pathTimeoutMs = 2500;
+        public static double longPathTimeoutMs = 3500;
+        public static double pathToleranceIn = 1.5;
+        public static double handoffToleranceIn = 6;
+        public static double pathToleranceDeg = 10;
+        public static double finalExtraFeedMs = 700;
         public static double gardenDwellMs = 300;
         public static double turretReadyDeg = 1.25;
+        public static boolean earlyFinish = true;
         public static boolean holdAfterPath = true;
         public static boolean keepSpinning = true;
         public static boolean learnBias = true;
@@ -91,7 +97,7 @@ public abstract class Auto extends RobotOpMode {
         intake = new Intake();
         shooter = new Shooter();
         turret = new Turret(runtime);
-        hood = new Hood();
+        ramp = new Ramp();
 
         drivetrain = new LazyDrive();
 
@@ -182,7 +188,7 @@ public abstract class Auto extends RobotOpMode {
         if (runtime != null) runtime.follower = null;
     }
 
-    /** Points turret and hood at the current goal and, when {@code autoSpin} is on, sets the flywheel speed. */
+    /** Points turret and ramp at the current goal and, when {@code autoSpin} is on, sets the flywheel speed. */
     protected void aim() {
         Pose goal = locs.get();
         if (goal == null) {
@@ -231,13 +237,13 @@ public abstract class Auto extends RobotOpMode {
         );
     }
 
+    /** Audience starts from the start pose. Scoring assumes the robot is already pressed against the scoring flower. */
     protected Command flowerRoutine(String where) {
         if (compare(where, "Audience")) {
             return sequential(
-                    followPath("preFlowerAudience"),
                     setIntake(0),
-                    instant(() -> hood.set(hood.on())),
-                    waitMs(AutoTune.flowerRampMs),
+                    instant(() -> ramp.set(ramp.on())),
+                    followPath("preFlowerAudience"),
                     followPath("flowerAudience"),
                     setIntake(1),
                     waitMs(AutoTune.feedMs * 0.8),
@@ -247,46 +253,35 @@ public abstract class Auto extends RobotOpMode {
                     setIntake(1),
                     followPath("flowerAudience")
             );
-        } else {
-            return sequential(
-                    followPath("preFlowerScoring"),
-                    setIntake(0),
-                    instant(() -> hood.set(hood.on())),
-                    waitMs(AutoTune.flowerRampMs),
-                    followPath("flowerScoring"),
-                    setIntake(1),
-                    waitMs(AutoTune.feedMs * 0.8),
-                    setIntake(0.5),
-                    followPath("backupScoring"),
-                    waitMs(AutoTune.flowerRampMs),
-                    setIntake(1),
-                    followPath("flowerScoring")
-            );
         }
+
+        return sequential(
+                setIntake(0.5),
+                followPath("backupScoring"),
+                waitMs(AutoTune.flowerRampMs),
+                setIntake(1),
+                followPath("flowerScoring")
+        );
     }
 
     protected Command gardenRoutine() {
         return sequential(
                 followPath("preGarden"),
                 setIntake(1),
-                instant(() -> hood.set(hood.on())),
+                instant(() -> ramp.set(ramp.on())),
                 followPath("toGarden"),
                 waitMs(AutoTune.gardenDwellMs * 0.8),
-                instant(() -> hood.set(hood.off())),
+                instant(() -> ramp.set(ramp.off())),
                 followPath("backupGarden"),
                 setIntake(1),
-                instant(() -> hood.set(hood.on())),
+                instant(() -> ramp.set(ramp.on())),
                 followPath("toGarden")
         );
     }
 
-    /** Waits for the flywheel and turret (with a timeout), then feeds for {@code feedMs}. */
+    /** Waits for the flywheel and turret (with a timeout), then feeds for {@code shootMs}. */
     protected Command shoot() {
-        return sequential(
-                race(waitUntil(this::readyToShoot), waitMs(AutoTune.readyTimeoutMs)),
-                waitMs(AutoTune.delayShootMs),
-                feed()
-        );
+        return shoot(AutoTune.shootMs);
     }
 
     protected Command shoot(double ms) {
@@ -303,11 +298,10 @@ public abstract class Auto extends RobotOpMode {
 
     protected Command feed(double ms) {
         final AtomicLong startNs = new AtomicLong();
-        final AtomicLong lastPauseNs = startNs;
         return infinite(() -> {
-                    shooter.setFeeding(readyToShoot());
-                    intake.setThrottle(1);
-                })
+            shooter.setFeeding(readyToShoot());
+            intake.setThrottle(1);
+        })
                 .setStart(() -> {
                     startNs.set(System.nanoTime());
                     intake.setThrottle(1);
@@ -321,20 +315,38 @@ public abstract class Auto extends RobotOpMode {
 
     protected Command flowerSwitch() {
         return Command.build()
-                .setExecute(hood::alter)
+                .setExecute(ramp::alter)
                 .setDone(() -> true);
     }
 
-    /** Follows a registered path with a timeout, then holds the end pose. */
     protected Command followPath(String name) {
+        return followPath(name, AutoTune.pathTimeoutMs, AutoTune.pathToleranceIn);
+    }
+
+    /** Ends on timeout or as soon as the robot is within {@code toleranceIn} of the end pose, then holds it. */
+    protected Command followPath(String name, double timeoutMs, double toleranceIn) {
         final Path path = Operator.get(name);
 
         return sequential(
-                race(follow(follower, path), waitMs(AutoTune.pathTimeoutMs)),
+                race(
+                        follow(follower, path),
+                        race(
+                                waitMs(timeoutMs),
+                                waitUntil(() -> AutoTune.earlyFinish && atPose(path.endPose(), toleranceIn))
+                        )
+                ),
                 instant(() -> {
                     if (AutoTune.holdAfterPath) follower.hold(path.endPose());
                 })
         );
+    }
+
+    private boolean atPose(Pose target, double toleranceIn) {
+        Pose pose = follower.pose();
+        double headingErr = Math.toDegrees(Math.abs(Util.wrapRad(pose.heading() - target.heading())));
+
+        return Math.hypot(pose.x() - target.x(), pose.y() - target.y()) < toleranceIn
+                && headingErr < AutoTune.pathToleranceDeg;
     }
 
     protected Command setIntake(double power) {
@@ -374,7 +386,7 @@ public abstract class Auto extends RobotOpMode {
 
         telemetry.addData("Flywheel", shooter.Speed());
         telemetry.addData("Flywheel target", shooter.getTargetVelocity());
-        telemetry.addData("flower servo: ", hood.getPosition());
+        telemetry.addData("flower servo: ", ramp.getPosition());
         telemetry.addData("Ready", readyToShoot());
         telemetry.update();
 
@@ -413,25 +425,27 @@ public abstract class Auto extends RobotOpMode {
             parkPoseA = poseFactory.of(11.4, 114, 0);
             scoringPose = poseFactory.of(48.25, 125, 270);
 
+            Pose flowerToFlowerCtrl = poseFactory.of(18.2, 99, 0);
+            Pose gardenToScoringCtrl = poseFactory.of(17.45, 80.7, 0);
+
             register("toGarden", line(preGardenPose, gardenPose).linear(preGardenPose, gardenPose));
             register("preGarden", line(startPoseA, preGardenPose).tangent());
 
-            register("fromFlowerToFlower", curve(flowerAudiencePose,  new Pose(18.2, 99), flowerScoringPose).tangent());
+            register("fromFlowerToFlower", curve(flowerAudiencePose, flowerToFlowerCtrl, flowerScoringPose).linear(flowerAudiencePose, flowerScoringPose));
 
-            register("toScoring", curve(flowerAudiencePose, new Pose(18.2, 99), scoringPose).linear(flowerAudiencePose, scoringPose));
-            register("fromGardenScore", curve(gardenPose, new Pose(17.45, 80.7), scoringPose).reverseTangent());
+            register("toScoring", curve(flowerAudiencePose, flowerToFlowerCtrl, scoringPose).linear(flowerAudiencePose, scoringPose));
+            register("fromGardenScore", curve(gardenPose, gardenToScoringCtrl, scoringPose).reverseTangent());
 
-            register("preFlowerScoring", line(flowerScoringPose, preFlowerScoring).tangent());
             register("flowerScoring", line(preFlowerScoring, flowerScoringPose).linear(preFlowerScoring, flowerScoringPose));
 
             register("preFlowerAudience", line(startPoseA, preFlowerAudience).linear(startPoseA, preFlowerAudience));
             register("flowerAudience", line(preFlowerAudience, flowerAudiencePose).linear(preFlowerAudience, flowerAudiencePose));
 
-            register("backupAudience", line(flowerAudiencePose, preFlowerAudience).linear(preFlowerAudience, flowerAudiencePose));
-            register("backupScoring", line(flowerScoringPose, preFlowerScoring).linear(preFlowerScoring, flowerScoringPose));
+            register("backupAudience", line(flowerAudiencePose, preFlowerAudience).linear(flowerAudiencePose, preFlowerAudience));
+            register("backupScoring", line(flowerScoringPose, preFlowerScoring).linear(flowerScoringPose, preFlowerScoring));
             register("backupGarden", line(gardenPose, preGardenPose).linear(gardenPose, preGardenPose));
 
-            register("ParkPose", line(preFlowerScoring, parkPoseA).linear(preFlowerScoring, parkPoseA));
+            register("ParkPose", line(flowerScoringPose, parkPoseA).linear(flowerScoringPose, parkPoseA));
 
             builded = true;
         }
@@ -445,9 +459,6 @@ public abstract class Auto extends RobotOpMode {
         }
 
         public static void register(String name, Path path) {
-            if (getter.get(name) != null) {
-                getter.replace(name, path);
-            }
             getter.put(name, path);
         }
 

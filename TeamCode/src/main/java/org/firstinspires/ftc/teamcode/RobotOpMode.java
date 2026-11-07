@@ -6,13 +6,12 @@ import com.pedropathing.drivetrain.DrivePowers;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.follower.ManualDrive;
 import com.pedropathing.ivy.Command;
-import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.teamcode.pedro.Constants;
-import org.firstinspires.ftc.teamcode.systems.hardware.Hood;
+import org.firstinspires.ftc.teamcode.systems.hardware.Ramp;
 import org.firstinspires.ftc.teamcode.systems.hardware.Intake;
 import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
 import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
@@ -27,7 +26,7 @@ public class RobotOpMode extends OpMode {
     public Turret turret;
     public Shooter shooter;
     public Intake intake;
-    public Hood hood;
+    public Ramp ramp;
     public Context.Alliance alliance;
 
     /** DO NOT EDIT, runtime is managed by RobotOpMode Context. Do not override */
@@ -61,7 +60,7 @@ public class RobotOpMode extends OpMode {
         intake = new Intake();
         shooter = new Shooter();
         turret = new Turret(runtime);
-        hood = new Hood();
+        ramp = new Ramp();
 
         drivetrain = new LazyDrive();
 
@@ -161,7 +160,7 @@ public class RobotOpMode extends OpMode {
 
     @NonNull
     public Set<Mechanism> getMechanisms() {
-        return Set.of(intake, shooter, turret, hood);
+        return Set.of(intake, shooter, turret, ramp);
     }
 
     /** Equivalent to super, use this to get access to ONLY {@code robotOpMode} methods */

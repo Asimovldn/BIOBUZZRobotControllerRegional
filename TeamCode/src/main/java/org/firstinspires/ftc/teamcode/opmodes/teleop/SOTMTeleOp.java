@@ -7,8 +7,6 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
-import com.pedropathing.revhub.localizers.PinpointLocalizer;
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Context;
@@ -122,11 +120,11 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad1.bWasPressed()) getFollower().setPose(forAlliance(resetPoseA));
 
         if (gamepad1.rightStickButtonWasPressed()) {
-            hood.alter();
+            ramp.alter();
         }
 
         if (gamepad1.leftStickButtonWasPressed()) {
-            hood.maxUp();
+            ramp.maxUp();
         }
 
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
@@ -168,7 +166,7 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Omega (rad/s)", sotm.omega());
         telemetry.addData("Servo ", getTurret().getServoPosition());
         telemetry.addData("Runtime Owner", runtime.owner);
-        telemetry.addData("Flower Angle: ", hood.servo.getPosition());
+        telemetry.addData("Flower Angle: ", ramp.servo.getPosition());
 
         if (hasShot) {
             telemetry.addData("Distance", shot.distance);
@@ -191,7 +189,7 @@ public class SOTMTeleOp extends RobotOpMode {
                 goal(), Drawing.POSE_LOOK
         );
 
-        Drawing.drawOffset(pose, new Pose(shot.aimX, shot.aimY));
+        if (hasShot) Drawing.drawOffset(pose, new Pose(shot.aimX, shot.aimY));
     }
 
     private void logShot() {
