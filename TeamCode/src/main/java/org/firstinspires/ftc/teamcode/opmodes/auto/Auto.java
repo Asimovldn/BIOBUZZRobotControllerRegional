@@ -49,11 +49,12 @@ public abstract class Auto extends RobotOpMode {
     @Config
     public static class AutoTune {
         public static double readyTimeoutMs = 2500;
-        public static double flowerRampMs = 60;
+        public static double flowerRampMs = 120;
         public static double feedMs = 900;
         public static double shootMs = 2100;
-        public static double delayShootMs = 135;
+        public static double delayShootMs = 85;
         public static double pathTimeoutMs = 2500;
+        public static double flowerTimeoutMs = 600;
         public static double longPathTimeoutMs = 3500;
         public static double pathToleranceIn = 1.5;
         public static double handoffToleranceIn = 6;
@@ -244,37 +245,54 @@ public abstract class Auto extends RobotOpMode {
                     setIntake(0),
                     instant(() -> ramp.set(ramp.on())),
                     followPath("preFlowerAudience"),
-                    followPath("flowerAudience"),
+                    followPath("flowerAudience", AutoTune.flowerTimeoutMs),
                     setIntake(1),
                     waitMs(AutoTune.feedMs * 0.8),
                     setIntake(0.5),
                     followPath("backupAudience"),
                     waitMs(AutoTune.flowerRampMs),
                     setIntake(1),
-                    followPath("flowerAudience")
+                    followPath("flowerAudience", AutoTune.flowerTimeoutMs, AutoTune.handoffToleranceIn)
             );
         }
 
         return sequential(
+                setIntake(0),
+                instant(() -> ramp.set(ramp.on())),
+                waitMs(AutoTune.flowerRampMs / 3),
+                setIntake(1),
+                followPath("flowerScoring", AutoTune.flowerTimeoutMs),
+                waitMs(AutoTune.flowerRampMs),
                 setIntake(0.5),
-                followPath("backupScoring"),
+                followPath("backupScoring", AutoTune.flowerTimeoutMs),
                 waitMs(AutoTune.flowerRampMs),
                 setIntake(1),
-                followPath("flowerScoring")
+                followPath("flowerScoring", AutoTune.flowerTimeoutMs, AutoTune.handoffToleranceIn)
+        );
+    }
+
+    protected Command scoringRoutineWithFlower() {
+        return sequential(
+                setIntake(0.5),
+                followPath("backupScoring", AutoTune.flowerTimeoutMs),
+                waitMs(AutoTune.flowerRampMs),
+                setIntake(1),
+                followPath("flowerScoring", AutoTune.flowerTimeoutMs, AutoTune.handoffToleranceIn)
         );
     }
 
     protected Command gardenRoutine() {
         return sequential(
+                instant(() -> ramp.set(ramp.off())),
                 followPath("preGarden"),
                 setIntake(1),
-                instant(() -> ramp.set(ramp.on())),
+                instant(() -> ramp.set(ramp.off())),
                 followPath("toGarden"),
                 waitMs(AutoTune.gardenDwellMs * 0.8),
-                instant(() -> ramp.set(ramp.off())),
+                instant(() -> ramp.set(ramp.on())),
                 followPath("backupGarden"),
                 setIntake(1),
-                instant(() -> ramp.set(ramp.on())),
+                instant(() -> ramp.set(ramp.off())),
                 followPath("toGarden")
         );
     }
@@ -323,6 +341,10 @@ public abstract class Auto extends RobotOpMode {
         return followPath(name, AutoTune.pathTimeoutMs, AutoTune.pathToleranceIn);
     }
 
+    protected Command followPath(String name, double timeout) {
+        return followPath(name, timeout, AutoTune.pathToleranceIn);
+    }
+
     /** Ends on timeout or as soon as the robot is within {@code toleranceIn} of the end pose, then holds it. */
     protected Command followPath(String name, double timeoutMs, double toleranceIn) {
         final Path path = Operator.get(name);
@@ -362,6 +384,22 @@ public abstract class Auto extends RobotOpMode {
                 shooter.brakeNow();
             }
         });
+    }
+
+    protected Command setRamp(double pos) {
+        return instant(() -> ramp.set(pos));
+    }
+
+    protected double on() {
+        return ramp.on();
+    }
+
+    protected double off() {
+        return ramp.off();
+    }
+
+    protected Command setRampMax() {
+        return instant(() -> ramp.maxUp());
     }
 
     protected Command stopSpin() {
@@ -415,25 +453,26 @@ public abstract class Auto extends RobotOpMode {
 
             startPoseA = poseFactory.of(59, 8, 90);
             gardenPose = poseFactory.of(12.7, 8.2, 180);
-            preFlowerScoring = poseFactory.of(42.5, 115, 90);
-            flowerScoringPose = poseFactory.of(42.5, 129.2, 90);
+            preFlowerScoring = poseFactory.of(49.5, 115, 90);
+            flowerScoringPose = poseFactory.of(49.1, 131.7, 90);
 
             preFlowerAudience = poseFactory.of(26, 49.5, 180);
-            flowerAudiencePose = poseFactory.of(13, 49.5, 180);
+            flowerAudiencePose = poseFactory.of(11.7, 49.5, 180);
 
             preGardenPose = poseFactory.of(26, 8.7, 180);
             parkPoseA = poseFactory.of(11.4, 114, 0);
-            scoringPose = poseFactory.of(48.25, 125, 270);
+            scoringPose = poseFactory.of(48.25, 127, 270);
 
             Pose flowerToFlowerCtrl = poseFactory.of(18.2, 99, 0);
             Pose gardenToScoringCtrl = poseFactory.of(17.45, 80.7, 0);
+            Pose flowerToFlowerCtrl2 = poseFactory.of(46.5, 105, 0);
 
             register("toGarden", line(preGardenPose, gardenPose).linear(preGardenPose, gardenPose));
             register("preGarden", line(startPoseA, preGardenPose).tangent());
 
-            register("fromFlowerToFlower", curve(flowerAudiencePose, flowerToFlowerCtrl, flowerScoringPose).linear(flowerAudiencePose, flowerScoringPose));
+            register("fromFlowerToFlower", curve(flowerAudiencePose, flowerToFlowerCtrl, flowerToFlowerCtrl2, flowerScoringPose).linear(flowerAudiencePose, flowerScoringPose));
 
-            register("toScoring", curve(flowerAudiencePose, flowerToFlowerCtrl, scoringPose).linear(flowerAudiencePose, scoringPose));
+            register("toScoring", curve(flowerAudiencePose, flowerToFlowerCtrl, flowerToFlowerCtrl2, scoringPose).linear(flowerAudiencePose, scoringPose));
             register("fromGardenScore", curve(gardenPose, gardenToScoringCtrl, scoringPose).reverseTangent());
 
             register("flowerScoring", line(preFlowerScoring, flowerScoringPose).linear(preFlowerScoring, flowerScoringPose));

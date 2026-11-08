@@ -68,6 +68,11 @@ public class Ramp extends Mechanism {
     }
 
     public void set(double p) {
+        if (p > 0.5) {
+            flag = false;
+        } else {
+            flag = true;
+        }
         servo.setPosition(p);
     }
 

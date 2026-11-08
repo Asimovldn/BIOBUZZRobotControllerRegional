@@ -6,11 +6,14 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.util.PIDFController;
+
+import java.util.PriorityQueue;
 
 public class Shooter extends Mechanism {
     @Config
@@ -21,7 +24,7 @@ public class Shooter extends Mechanism {
         public static double kI = 0;
         public static double kP = 25;
         public static double kS = 0;
-        public static double kV = 0.996;
+        public static double kV = 0.71;
         public static double maxOvershoot = 20;
         public static double nominalVoltage = 12;
         public static double readyTolerance = 30;
@@ -43,8 +46,10 @@ public class Shooter extends Mechanism {
 
         feeder.setDirection(DcMotorSimple.Direction.FORWARD);
         feeder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        flywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        flywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 0, 0, 30));
 
         motor = flywheel;
 

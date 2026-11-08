@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.opmodes.auto;
 
 import static com.pedropathing.ivy.commands.Commands.instant;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
+import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
 import com.pedropathing.ivy.Command;
@@ -20,8 +22,9 @@ public class RedSoloA extends Auto {
     @Override
     public Command routine() {
         return sequential(
-                spin(true),
                 instant(() -> ramp.set(ramp.off())),
+                waitMs(20),
+                spin(true),
                 shoot(),
                 stopSpinUnlessKept(),
 
@@ -33,9 +36,13 @@ public class RedSoloA extends Auto {
                 }),
                 setIntake(1),
                 instant(() -> ramp.set(ramp.on())),
-                followPath("fromFlowerToFlower", AutoTune.longPathTimeoutMs, AutoTune.handoffToleranceIn),
+                followPath("toScoring", AutoTune.longPathTimeoutMs, AutoTune.handoffToleranceIn),
+                instant(() -> ramp.alter()),
                 shoot(),
                 stopSpinUnlessKept(),
+
+                instant(() -> ramp.set(ramp.on())),
+                waitMs(40),
 
                 flowerRoutine("Scoring"),
 
@@ -44,8 +51,11 @@ public class RedSoloA extends Auto {
                 stopSpinUnlessKept(),
 
                 parkRoutine(),
-                instant(() -> ramp.maxUp()),
-                stopSpin()
+                instant(() -> ramp.set(ramp.off())),
+                stopSpin(),
+
+                waitUntil(() -> shooter.atSpeed(0, 40)),
+                setRampMax()
         );
     }
 }
