@@ -2,12 +2,36 @@ package org.firstinspires.ftc.teamcode.systems.sotm;
 
 import static org.firstinspires.ftc.teamcode.util.Util.lerp;
 
+import com.acmerobotics.dashboard.config.Config;
+
+import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
 public class ShotTable {
+    private static final double GRAVITY_IN_S2 = 386.09;
+
+    @Config
+    public static class Ballistics {
+        public static double launchDeg = Shooter.HOOD_DEG;
+
+        /** Height of the goal opening above the ball exit point, inches. Measure it. */
+        public static double goalRiseIn = 25;
+
+        public static double dragFactor = 1.0;
+    }
+
+    /** Ideal projectile time of flight (no spin, no drag) at the fixed launch angle, a sanity check for the table. */
+    public static double ballisticTof(double distanceIn) {
+        double climb = distanceIn * Math.tan(Math.toRadians(Ballistics.launchDeg)) - Ballistics.goalRiseIn;
+        if (climb <= 0) return 0;
+
+        return Ballistics.dragFactor * Math.sqrt(2 * climb / GRAVITY_IN_S2);
+    }
+
     public static class Entry {
         public final double velocity, hood, tof;
 
@@ -30,6 +54,11 @@ public class ShotTable {
 
     private final List<Row> rows = new ArrayList<>();
     private Entry fallback = new Entry(0, 0, 0.45);
+
+    /** Fixed hood: distance in inches, velocity in flywheel ticks/s, tof in seconds. */
+    public ShotTable add(double distance, double velocity, double tof) {
+        return add(distance, velocity, Shooter.HOOD_DEG, tof);
+    }
 
     /** distance in inches, velocity in flywheel ticks/s, tof in seconds. */
     public ShotTable add(double distance, double velocity, double hood, double tof) {

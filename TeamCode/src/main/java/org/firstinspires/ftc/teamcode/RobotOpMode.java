@@ -19,7 +19,8 @@ import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.util.LazyDrive;
 import org.firstinspires.ftc.teamcode.util.Util;
 
-import java.util.Set;
+import java.util.Arrays;
+import java.util.List;
 
 public class RobotOpMode extends OpMode {
     public Follower follower;
@@ -165,8 +166,8 @@ public class RobotOpMode extends OpMode {
     }
 
     @NonNull
-    public Set<Mechanism> getMechanisms() {
-        return Set.of(intake, shooter, turret, ramp);
+    public List<Mechanism> getMechanisms() {
+        return Arrays.asList(intake, shooter, turret, ramp);
     }
 
     /** Equivalent to super, use this to get access to ONLY {@code robotOpMode} methods */

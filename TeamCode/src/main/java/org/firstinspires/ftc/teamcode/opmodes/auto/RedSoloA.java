@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.opmodes.auto;
 
 import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
-import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
 import com.pedropathing.ivy.Command;
@@ -52,11 +51,7 @@ public class RedSoloA extends Auto {
                 stopSpinUnlessKept(),
 
                 parkRoutine(),
-                instant(() -> ramp.set(ramp.off())),
-                stopSpin(),
-
-                waitUntil(() -> shooter.atSpeed(0, 40)),
-                setRampMax()
+                finishRoutine()
         );
     }
 }

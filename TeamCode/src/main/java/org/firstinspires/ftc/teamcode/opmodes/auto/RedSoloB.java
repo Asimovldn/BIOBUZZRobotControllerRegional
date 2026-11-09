@@ -32,19 +32,21 @@ public class RedSoloB extends Auto {
                 }),
                 setIntake(1),
                 instant(() -> ramp.set(ramp.on())),
-                followPath("toScoring", AutoTune.longPathTimeoutMs, AutoTune.handoffToleranceIn),
+                followPath("fromGardenScore", AutoTune.longPathTimeoutMs, AutoTune.handoffToleranceIn),
                 shoot(),
                 stopSpinUnlessKept(),
 
-                flowerRoutine("Scoring"),
+                gated(AutoTune.flowerMinSec, sequential(
+                        flowerRoutine("Scoring"),
+                        spin(true),
+                        shoot(AutoTune.shootMs + AutoTune.finalExtraFeedMs),
+                        stopSpinUnlessKept()
+                ), () -> flowerStageDone = true),
 
-                spin(true),
-                shoot(AutoTune.shootMs + AutoTune.finalExtraFeedMs),
-                stopSpinUnlessKept(),
+                onlyIf(() -> flowerStageDone, parkRoutine()),
+                onlyIf(() -> !flowerStageDone, parkFromScoringRoutine()),
 
-                parkRoutine(),
-                instant(() -> ramp.maxUp()),
-                stopSpin()
+                finishRoutine()
         );
     }
 }

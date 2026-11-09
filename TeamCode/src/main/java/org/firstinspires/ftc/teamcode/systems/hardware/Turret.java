@@ -61,7 +61,7 @@ public class Turret extends Mechanism {
     private Context.Alliance alliance;
     private Mode currentMode = Mode.OFF;
 
-    private double targetAngle, err, lastWrappedTarget;
+    private double targetAngle, err, shortfall, lastWrappedTarget;
     private double lastResultTimestamp = -1;
     private double manualAngle = 0, manualVelocity = 0, trackAngle = 0, trackVel = 0;
     private double visionAngle;
@@ -104,6 +104,7 @@ public class Turret extends Mechanism {
         trackStampNs = 0;
         visionFresh = false;
         err = 0;
+        shortfall = 0;
         histCount = 0;
         histHead = 0;
         lastMoveNs = System.nanoTime() + 1_000_000_000L;
@@ -156,7 +157,8 @@ public class Turret extends Mechanism {
 
     public void editGain(double x) { Tune.aimGain = x; }
     public double getAngle() { return currentAngle; }
-    public double getError() { return err; }
+    public double getError() { return err + shortfall; }
+    public double getShortfall() { return shortfall; }
     public double getTargetAngle() { return targetAngle; }
     public double getServoPosition() { return servo.getPosition(); }
     public double getTa() { return seenTa; }
@@ -165,7 +167,18 @@ public class Turret extends Mechanism {
     public void setAlliance(Context.Alliance alliance) { this.alliance = alliance; }
 
     public boolean isOnTarget(double toleranceDeg) {
-        return Math.abs(err) < toleranceDeg;
+        return Math.abs(getError()) < toleranceDeg;
+    }
+
+    /** True when the servo can point at {@code deg} (mod 360) with {@code marginDeg} to spare from both limits. */
+    public boolean canReach(double deg, double marginDeg) {
+        if (Double.isNaN(deg) || Double.isInfinite(deg)) return false;
+
+        double lo = minAngle() + marginDeg, hi = maxAngle() - marginDeg;
+        if (hi < lo) return false;
+
+        double a = lo + (((deg - lo) % 360) + 360) % 360;
+        return a <= hi;
     }
 
     public void switchLocation() {
@@ -188,6 +201,7 @@ public class Turret extends Mechanism {
 
         currentLocation = runtime.location;
         double goal = currentAngle;
+        shortfall = 0;
 
         switch (currentMode) {
             case OFF:
@@ -217,8 +231,10 @@ public class Turret extends Mechanism {
                 if (trackVel != 0 && now - trackStampNs > 200_000_000L) trackVel = 0;
                 visionUpdate(now);
 
-                goal = wrapToSafeRange(trackAngle + Range.clip(trackVel, -slewDps(), slewDps()) * Tune.trackLeadSec);
+                double want = trackAngle + Range.clip(trackVel, -slewDps(), slewDps()) * Tune.trackLeadSec;
+                goal = wrapToSafeRange(want);
                 targetAngle = goal;
+                shortfall = Util.wrapDeg(want - goal);
                 break;
 
             case RECENTERING:

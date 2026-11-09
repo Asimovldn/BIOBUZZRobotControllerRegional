@@ -38,7 +38,9 @@ import org.firstinspires.ftc.teamcode.util.Util;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 
 /**
  * Base class for autonomous routines. Not registered as an OpMode, subclasses carry {@code @Autonomous}.
@@ -66,6 +68,19 @@ public abstract class Auto extends RobotOpMode {
         public static boolean holdAfterPath = true;
         public static boolean keepSpinning = true;
         public static boolean learnBias = true;
+        public static double autoSeconds = 30;
+        public static double parkReserveSec = 3.5;
+        public static double flowerMinSec = 11;
+        public static double spinDownTimeoutMs = 1200;
+        public static boolean shotDetect = true;
+        public static int balls = 3;
+        public static double minFeedMs = 700;
+        public static double shotSettleMs = 120;
+        public static double dryFeedMs = 1200;
+        public static double turretReachMarginDeg = 8;
+        public static double turretComfortDeg = 120;
+        public static double faceToleranceDeg = 8;
+        public static double faceTimeoutMs = 900;
     }
 
     protected Operator paths;
@@ -73,6 +88,10 @@ public abstract class Auto extends RobotOpMode {
     protected Context.HiveLocations locs;
     protected ShotSolver.Solution shot;
     protected boolean autoSpin = false;
+    protected boolean flowerStageDone = false;
+    protected double turretCmd;
+
+    private double faceHeading = Double.NaN;
 
     private Command plan;
     private final ElapsedTime matchTimer = new ElapsedTime();
@@ -210,9 +229,67 @@ public abstract class Auto extends RobotOpMode {
         shot = solution.valid ? solution : null;
         if (shot == null) return;
 
-        turret.setTrackAngle(sotm.turretAngleDeg(shot));
+        turretCmd = sotm.turretAngleDeg(shot);
+        turret.setTrackAngle(turretCmd);
 
         if (autoSpin) shooter.spinTo(shot.velocity);
+    }
+
+    protected double secondsLeft() {
+        return AutoTune.autoSeconds - matchTimer.seconds();
+    }
+
+    /** Runs {@code c} only while {@code cond} holds, it is cut as soon as the condition turns false. */
+    protected Command onlyIf(BooleanSupplier cond, Command c) {
+        return race(c, waitUntil(() -> !cond.getAsBoolean()));
+    }
+
+    /**
+     * Runs {@code stage} only if at least {@code minSecLeft} seconds are left when it starts, and cuts it
+     * when the park reserve is reached. {@code whenDone} runs only if the stage finished by itself.
+     */
+    protected Command gated(double minSecLeft, Command stage, Runnable whenDone) {
+        final AtomicBoolean go = new AtomicBoolean();
+
+        return sequential(
+                instant(() -> go.set(secondsLeft() >= minSecLeft)),
+                race(
+                        sequential(stage, instant(whenDone)),
+                        waitUntil(() -> !go.get() || secondsLeft() < AutoTune.parkReserveSec)
+                )
+        );
+    }
+
+    private boolean aimReachable() {
+        return shot == null || turret.canReach(turretCmd, AutoTune.turretReachMarginDeg);
+    }
+
+    private void turnForShot() {
+        faceHeading = Double.NaN;
+        if (shot == null || aimReachable()) return;
+
+        Pose pose = follower.pose();
+        double comfort = Math.toRadians(AutoTune.turretComfortDeg);
+        double a = Util.wrapRad(shot.fieldAngle + comfort);
+        double b = Util.wrapRad(shot.fieldAngle - comfort);
+
+        faceHeading = Math.abs(Util.wrapRad(a - pose.heading())) <= Math.abs(Util.wrapRad(b - pose.heading())) ? a : b;
+        follower.hold(new Pose(pose.x(), pose.y(), faceHeading));
+    }
+
+    private boolean facingForShot() {
+        if (Double.isNaN(faceHeading)) return true;
+
+        double err = Math.abs(Util.wrapRad(follower.pose().heading() - faceHeading));
+        return err < Math.toRadians(AutoTune.faceToleranceDeg);
+    }
+
+    /** Rotates in place only when the goal is inside the turret's dead zone, so the volley is not fired off target. */
+    protected Command faceShot() {
+        return sequential(
+                instant(this::turnForShot),
+                race(waitUntil(this::facingForShot), waitMs(AutoTune.faceTimeoutMs))
+        );
     }
 
     protected boolean readyToShoot() {
@@ -236,6 +313,22 @@ public abstract class Auto extends RobotOpMode {
     protected Command parkRoutine() {
         return sequential(
                 followPath("ParkPose")
+        );
+    }
+
+    protected Command parkFromScoringRoutine() {
+        return sequential(
+                followPath("ParkFromScoring")
+        );
+    }
+
+    /** Ramp off, flywheel off, ramp all the way up once the flywheel has stopped. */
+    protected Command finishRoutine() {
+        return sequential(
+                instant(() -> ramp.set(ramp.off())),
+                stopSpin(),
+                race(waitUntil(() -> shooter.atSpeed(0, 40)), waitMs(AutoTune.spinDownTimeoutMs)),
+                setRampMax()
         );
     }
 
@@ -305,6 +398,7 @@ public abstract class Auto extends RobotOpMode {
 
     protected Command shoot(double ms) {
         return sequential(
+                faceShot(),
                 race(waitUntil(this::readyToShoot), waitMs(AutoTune.readyTimeoutMs)),
                 waitMs(AutoTune.delayShootMs),
                 feed(ms)
@@ -323,13 +417,28 @@ public abstract class Auto extends RobotOpMode {
         })
                 .setStart(() -> {
                     startNs.set(System.nanoTime());
+                    shooter.resetShotCount();
                     intake.setThrottle(1);
                 })
-                .setDone(() -> (System.nanoTime() - startNs.get()) * 1e-6 >= ms)
+                .setDone(() -> volleyDone((System.nanoTime() - startNs.get()) * 1e-6, ms))
                 .setEnd(c -> {
                     shooter.setFeeding(false);
                     intake.setThrottle(0);
                 });
+    }
+
+    /** Ends at the time cap, or earlier once the RPM dips say every ball has left. */
+    private boolean volleyDone(double elapsedMs, double capMs) {
+        if (elapsedMs >= capMs) return true;
+        if (!AutoTune.shotDetect || elapsedMs < AutoTune.minFeedMs) return false;
+
+        int shots = shooter.shotCount();
+        double idle = shooter.msSinceLastShot();
+
+        boolean allOut = shots >= AutoTune.balls && idle >= AutoTune.shotSettleMs;
+        boolean ranDry = shots > 0 && idle >= AutoTune.dryFeedMs;
+
+        return allOut || ranDry;
     }
 
     protected Command flowerSwitch() {
@@ -414,6 +523,7 @@ public abstract class Auto extends RobotOpMode {
         Pose pose = follower.pose();
 
         telemetry.addData("Time (s)", "%.1f", matchTimer.seconds());
+        telemetry.addData("Time left (s)", "%.1f", secondsLeft());
         telemetry.addData("Pose", "%.1f, %.1f, %.0f deg", pose.x(), pose.y(), Math.toDegrees(pose.heading()));
         telemetry.addData("Follower busy", follower.isBusy());
         telemetry.addData("Location", runtime.location);
@@ -421,7 +531,10 @@ public abstract class Auto extends RobotOpMode {
         if (shot != null) {
             telemetry.addData("Goal distance", shot.distance);
             telemetry.addData("Turret err", turret.getError());
+            telemetry.addData("Turret cmd", turretCmd);
         }
+
+        telemetry.addData("Shots", shooter.shotCount());
 
         telemetry.addData("Flywheel", shooter.Speed());
         telemetry.addData("Flywheel target", shooter.getTargetVelocity());
@@ -486,6 +599,7 @@ public abstract class Auto extends RobotOpMode {
             register("backupGarden", line(gardenPose, preGardenPose).linear(gardenPose, preGardenPose));
 
             register("ParkPose", line(flowerScoringPose, parkPoseA).linear(flowerScoringPose, parkPoseA));
+            register("ParkFromScoring", line(scoringPose, parkPoseA).linear(scoringPose, parkPoseA));
 
             builded = true;
         }

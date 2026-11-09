@@ -16,6 +16,7 @@ import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotData;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
+import org.firstinspires.ftc.teamcode.systems.sotm.ShotTable;
 import org.firstinspires.ftc.teamcode.util.Util;
 
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
@@ -34,8 +35,6 @@ public class SOTMTeleOp extends RobotOpMode {
 
     protected final SOTM sotm = new SOTM();
     protected boolean manualOnly = false;
-
-    protected double currAngle = 20;
 
     private ShotSolver.Solution shot;
     private boolean sotmEnabled = true, spinEnabled = false;
@@ -109,11 +108,7 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad2.dpadUpWasPressed()) manualVelocity += 10;
         if (gamepad2.dpadDownWasPressed()) manualVelocity -= 10;
 
-        if (gamepad2.dpadLeftWasPressed()) currAngle--;
-        if (gamepad2.dpadRightWasPressed()) currAngle++;
-
-        if (gamepad2.leftTriggerWasPressed()) spinEnabled = !spinEnabled;
-        if (gamepad2.leftTriggerWasReleased()) spinEnabled = !spinEnabled;
+        spinEnabled = gamepad2.left_trigger > 0.5;
         if (gamepad2.leftBumperWasPressed()) manualOnly = !manualOnly;
 
         if (gamepad1.aWasPressed()) getFollower().setPose(forAlliance(resetPoseB));
@@ -166,6 +161,7 @@ public class SOTMTeleOp extends RobotOpMode {
         if (hasShot) {
             telemetry.addData("Distance", shot.distance);
             telemetry.addData("ToF", shot.tof);
+            telemetry.addData("ToF (ballistic est.)", ShotTable.ballisticTof(shot.distance));
             telemetry.addData("Aim point", "%.1f, %.1f", shot.aimX, shot.aimY);
             telemetry.addData("Turret cmd", sotm.turretAngleDeg(shot));
         }
@@ -175,6 +171,9 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Flywheel", getShooter().Speed());
         telemetry.addData("Flywheel target", getShooter().getTargetVelocity());
         telemetry.addData("Ready", ready);
+        telemetry.addData("Shots", getShooter().shotCount());
+        telemetry.addData("Battery", getShooter().getVoltage());
+        telemetry.addData("Aim shortfall", getTurret().getShortfall());
         telemetry.addData("Lateral Pointing To: ", sotm.lateral());
         telemetry.update();
 
@@ -190,7 +189,7 @@ public class SOTMTeleOp extends RobotOpMode {
     private void logShot() {
         if (shot == null || !shot.valid) return;
 
-        String line = String.format(Locale.US, "table.add(%.1f, %.0f, %.1f, %.2f);", shot.distance, manualVelocity, currAngle, shot.tof);
+        String line = String.format(Locale.US, "table.add(%.1f, %.0f, %.2f);", shot.distance, manualVelocity, ShotTable.ballisticTof(shot.distance));
 
         try (FileWriter f = new FileWriter(AppUtil.getInstance().getSettingsFile("shot_table.txt"), true)) {
             f.write(line + "\n");

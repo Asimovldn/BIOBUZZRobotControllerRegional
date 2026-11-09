@@ -31,6 +31,11 @@ public class ShotSolver {
         public static double maxLateralShift = 6;
         public static double rightX = -1;
         public static double rightY = 0;
+        public static boolean ballisticTof = false;
+    }
+
+    private static double tofFor(ShotTable.Entry e, double distance) {
+        return SolverTune.ballisticTof ? ShotTable.ballisticTof(distance) : e.tof;
     }
 
     public ShotSolver(ShotTable table) {
@@ -59,14 +64,14 @@ public class ShotSolver {
         double ax = tx, ay = ty;
         double d = Math.hypot(ax - sx, ay - sy);
         ShotTable.Entry e = table.get(d);
-        double tof = e.tof;
+        double tof = tofFor(e, d);
 
         for (int i = 0; i < iterations; i++) {
             ax = tx - svx * tof;
             ay = ty - svy * tof;
             d = Math.hypot(ax - sx, ay - sy);
             e = table.get(d);
-            tof += damp * (e.tof - tof);
+            tof += damp * (tofFor(e, d) - tof);
         }
 
         Solution s = new Solution();
