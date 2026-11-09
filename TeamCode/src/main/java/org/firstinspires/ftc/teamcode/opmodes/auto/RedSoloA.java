@@ -46,6 +46,8 @@ public class RedSoloA extends Auto {
 
                 flowerRoutine("Scoring"),
 
+                setIntake(1),
+                waitMs(300),
                 spin(true),
                 shoot(AutoTune.shootMs + AutoTune.finalExtraFeedMs),
                 stopSpinUnlessKept(),

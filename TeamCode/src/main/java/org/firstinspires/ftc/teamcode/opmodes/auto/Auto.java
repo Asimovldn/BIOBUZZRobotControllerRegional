@@ -59,7 +59,7 @@ public abstract class Auto extends RobotOpMode {
         public static double pathToleranceIn = 1.5;
         public static double handoffToleranceIn = 6;
         public static double pathToleranceDeg = 10;
-        public static double finalExtraFeedMs = 700;
+        public static double finalExtraFeedMs = 1200;
         public static double gardenDwellMs = 300;
         public static double turretReadyDeg = 1.25;
         public static boolean earlyFinish = true;
@@ -257,7 +257,6 @@ public abstract class Auto extends RobotOpMode {
         }
 
         return sequential(
-                setIntake(0),
                 instant(() -> ramp.set(ramp.on())),
                 waitMs(AutoTune.flowerRampMs / 3),
                 setIntake(1),
@@ -267,7 +266,8 @@ public abstract class Auto extends RobotOpMode {
                 followPath("backupScoring", AutoTune.flowerTimeoutMs),
                 waitMs(AutoTune.flowerRampMs),
                 setIntake(1),
-                followPath("flowerScoring", AutoTune.flowerTimeoutMs, AutoTune.handoffToleranceIn)
+                followPath("flowerScoring", AutoTune.flowerTimeoutMs, AutoTune.handoffToleranceIn),
+                setIntake(1)
         );
     }
 
