@@ -31,7 +31,6 @@ public class RedSoloA extends Auto {
                 flowerRoutine("Audience"),
 
                 instant(() -> {
-                    runtime.switchLocation();
                     autoSpin = true;
                 }),
                 setIntake(1),

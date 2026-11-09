@@ -70,6 +70,23 @@ public class Context {
         public static final double HIVE_SPACING_IN = 25.5;
         public static final double OPENING_OFFSET_IN = 16.0;
 
+        /** Inches past the field midline the robot must cross before the aimed side flips (stops flicker on the line). */
+        public static final double SIDE_HYSTERESIS_IN = 4.0;
+
+        /**
+         * Which hive the robot should aim at, from where it is on the field.
+         * Audience half is y &lt; FIELD_CENTER, Scoring half is y &gt; FIELD_CENTER (same layout as {@link #get}).
+         * Keeps {@code current} while the robot is inside the hysteresis band around the midline.
+         */
+        public static String sideForPose(Pose pose, String current) {
+            if (pose == null) return current;
+
+            if (pose.y() < FIELD_CENTER - SIDE_HYSTERESIS_IN) return "Audience";
+            if (pose.y() > FIELD_CENTER + SIDE_HYSTERESIS_IN) return "Scoring";
+
+            return current == null ? (pose.y() < FIELD_CENTER ? "Audience" : "Scoring") : current;
+        }
+
         public Context ctx;
 
         public HiveLocations(Context ctx) {

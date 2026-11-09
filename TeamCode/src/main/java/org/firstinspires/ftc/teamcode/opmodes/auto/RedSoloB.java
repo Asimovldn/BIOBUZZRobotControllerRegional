@@ -28,7 +28,6 @@ public class RedSoloB extends Auto {
                 gardenRoutine(),
 
                 instant(() -> {
-                    runtime.switchLocation();
                     autoSpin = true;
                 }),
                 setIntake(1),

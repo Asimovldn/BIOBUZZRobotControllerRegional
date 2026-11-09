@@ -97,7 +97,6 @@ public class RedCalibrate extends RobotOpMode {
         if (gamepad2.bWasPressed()) {
             getTurret().reset();
 
-            runtime.switchLocation();
             gamepad2.rumbleBlips(3);
         }
 

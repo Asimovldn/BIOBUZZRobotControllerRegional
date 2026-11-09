@@ -39,6 +39,7 @@ public class SOTMTeleOp extends RobotOpMode {
 
     private ShotSolver.Solution shot;
     private boolean sotmEnabled = true, spinEnabled = false;
+
     private double manualVelocity = 1300;
     private String lastLog = "";
 
@@ -85,7 +86,6 @@ public class SOTMTeleOp extends RobotOpMode {
         Pose pose = follower.pose();
         Velocity vel = follower.velocity();
         sotm.update(pose, vel);
-
 
         Pose goal = goal();
         // if (goal != null) getTurret().setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
@@ -149,11 +149,6 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad2.xWasPressed()) {
             logShot();
             gamepad2.rumbleBlips(1);
-        }
-
-        if (gamepad2.bWasPressed()) {
-            runtime.switchLocation();
-            gamepad2.rumbleBlips(3);
         }
 
         drive(gamepad1);
