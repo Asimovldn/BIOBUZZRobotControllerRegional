@@ -162,6 +162,7 @@ public abstract class Auto extends RobotOpMode {
     public void loop() {
         follower.update();
 
+        updateSide();
         aim();
         periodic();
 

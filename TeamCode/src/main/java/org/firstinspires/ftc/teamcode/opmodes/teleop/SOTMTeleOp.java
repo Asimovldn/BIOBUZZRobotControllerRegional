@@ -87,8 +87,6 @@ public class SOTMTeleOp extends RobotOpMode {
         Velocity vel = follower.velocity();
         sotm.update(pose, vel);
 
-        runtime.location = Context.HiveLocations.sideForPose(pose, runtime.location);
-
         Pose goal = goal();
         // if (goal != null) getTurret().setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
 

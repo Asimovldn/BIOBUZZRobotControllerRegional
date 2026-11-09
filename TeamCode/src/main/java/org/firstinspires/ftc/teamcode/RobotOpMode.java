@@ -140,11 +140,17 @@ public class RobotOpMode extends OpMode {
 
     @Override
     public void loop() {
+        updateSide();
         updateMechanisms();
         periodic();
         follower.update();
 
         runtime.update(alliance, null, follower.pose(), follower);
+    }
+
+    /** Aims at the hive on the half of the field the robot is on. Call before updateMechanisms() so the turret sees it this loop. */
+    protected void updateSide() {
+        runtime.location = Context.HiveLocations.sideForPose(follower.pose(), runtime.location);
     }
 
     /** Your Code Loop, called as {@code loop()}. */
