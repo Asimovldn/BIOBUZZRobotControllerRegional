@@ -22,6 +22,8 @@ public class run extends LinearOpMode {
 
         ramp.setup(hardwareMap);
 
+        ramp.set(1);
+
         waitForStart();
 
         servo.setPwmEnable();
@@ -38,16 +40,11 @@ public class run extends LinearOpMode {
                 }
             }
 
-            if (gamepad2.rightStickButtonWasPressed() || gamepad1.rightStickButtonWasPressed()) {
-                ramp.alter();
-            };
-
-            if (gamepad2.leftStickButtonWasPressed()) {
-                ramp.maxUp();
-            }
+            ramp.set(0);
+            ramp.set(1);
 
             telemetry.addData("Servo Pos: ", servo.getPosition());
-            telemetry.addData("Servo Pos Hood: ", ramp.getPosition());
+            telemetry.addData("Servo Pos Ramp: ", ramp.getPosition());
             telemetry.addData("Curr Angle: ", currAngle);
 
             updateTelemetry(telemetry);

@@ -16,7 +16,7 @@ public class Ramp extends Mechanism {
     }
 
     public void setup(HardwareMap hw) {
-        flag = false;
+        flag = true;
         servo = hw.get(Servo.class, "flower");
         servo.setPosition(off());
     }
@@ -27,11 +27,11 @@ public class Ramp extends Mechanism {
 
     @Config
     public static class FlowerTune {
-        public static double alpha = 0.24;
+        public static double alpha = 0.15;
     }
 
     public double MIN_ANGLE = 20, MAX_ANGLE = 40;
-    public boolean flag = true;
+    public boolean flag = false;
 
     /** Returns [left, right] */
     public double angleToServo(double ang) {
@@ -41,7 +41,7 @@ public class Ramp extends Mechanism {
     }
 
     public double off() {
-        return 0.85;
+        return 0.53;
     }
 
     public double on() {
@@ -49,7 +49,7 @@ public class Ramp extends Mechanism {
     }
 
     public double extend() {
-        return 1;
+        return 0.84;
     }
 
     public void alter() {
@@ -61,6 +61,8 @@ public class Ramp extends Mechanism {
 
         flag = !flag;
     }
+
+    public boolean getFlag() { return flag; }
 
     public void maxUp() {
         servo.setPosition(extend());

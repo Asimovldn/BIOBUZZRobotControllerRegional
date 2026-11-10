@@ -63,8 +63,8 @@ public class Context {
         @Config
         public static class HiveTune {
             public static double depthTrimIn = 0;
-            public static double xTrimIn = 0;
-            public static double scoringTrim = 2;
+            public static double scoringTrim = 4;
+            public static double xTrimIn = -4;
         }
 
         public static final double HIVE_SPACING_IN = 25.5;
@@ -476,6 +476,7 @@ public class Context {
     public static Context fromOwner(Util.Code code, HardwareMap hw) {
         Context.reset();
         Context.runtime = new Context();
+        Context.autonomousEnd = Pose.zero();
         Context.runtime.hardwareMap = hw;
         Context.runtime.setOwner(code);
 

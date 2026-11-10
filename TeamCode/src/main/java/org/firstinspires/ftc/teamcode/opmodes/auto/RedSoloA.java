@@ -35,12 +35,13 @@ public class RedSoloA extends Auto {
                 setIntake(1),
                 instant(() -> ramp.set(ramp.on())),
                 followPath("toScoring", AutoTune.longPathTimeoutMs, AutoTune.handoffToleranceIn),
-                instant(() -> ramp.alter()),
-                shoot(),
+                shoot(AutoTune.shootMs + AutoTune.finalExtraFeedMs),
                 stopSpinUnlessKept(),
 
                 instant(() -> ramp.set(ramp.on())),
-                waitMs(40),
+                setIntake(-1),
+                waitMs(120),
+                setIntake(0),
 
                 flowerRoutine("Scoring"),
 
@@ -48,10 +49,15 @@ public class RedSoloA extends Auto {
                 waitMs(300),
                 spin(true),
                 shoot(AutoTune.shootMs + AutoTune.finalExtraFeedMs),
+                setIntake(1),
                 stopSpinUnlessKept(),
 
+                followPath("backupScoring"),
+
                 parkRoutine(),
-                finishRoutine()
+                shoot(AutoTune.finalExtraFeedMs),
+                stopSpinUnlessKept(),
+                setIntake(0)
         );
     }
 }

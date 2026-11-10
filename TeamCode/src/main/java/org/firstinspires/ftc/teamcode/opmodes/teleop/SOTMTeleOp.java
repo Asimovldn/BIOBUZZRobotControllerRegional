@@ -90,9 +90,9 @@ public class SOTMTeleOp extends RobotOpMode {
         // if (goal != null) getTurret().setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
 
         Double visionAngle = getTurret().consumeVisionAngle();
-        if (visionAngle != null && goal != null && sotmEnabled) sotm.learnBias(visionAngle, pose, goal);
+        if (visionAngle != null && goal != null && sotmEnabled) sotm.learnBias(visionAngle, pose, goal, runtime.location);
 
-        shot = goal == null ? null : sotm.solve(pose, goal);
+        shot = goal == null ? null : sotm.solve(pose, goal, runtime.location);
         boolean hasShot = shot != null && shot.valid;
 
         if (gamepad2.aWasPressed()) {
@@ -141,6 +141,7 @@ public class SOTMTeleOp extends RobotOpMode {
             gamepad2.rumbleBlips(2);
         }
 
+
         if (gamepad2.xWasPressed()) {
             logShot();
             gamepad2.rumbleBlips(1);
@@ -157,6 +158,7 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Servo ", getTurret().getServoPosition());
         telemetry.addData("Runtime Owner", runtime.owner);
         telemetry.addData("Flower Angle: ", ramp.servo.getPosition());
+        telemetry.addData("Flower Get Flag: ", ramp.getFlag());
 
         if (hasShot) {
             telemetry.addData("Distance", shot.distance);

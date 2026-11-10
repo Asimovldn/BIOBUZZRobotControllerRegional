@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.systems.sotm;
 
+import static org.firstinspires.ftc.teamcode.util.Util.compare;
+
 import com.acmerobotics.dashboard.config.Config;
 
 public class ShotSolver {
@@ -27,11 +29,11 @@ public class ShotSolver {
 
     @Config
     public static class SolverTune {
-        public static double lateralGain = 0.02;
-        public static double maxLateralShift = 6;
+        public static double lateralGain = -0.06;
+        public static double maxLateralShift = 20;
         public static double rightX = -1;
         public static double rightY = 0;
-        public static boolean ballisticTof = false;
+        public static boolean ballisticTof = true;
     }
 
     private static double tofFor(ShotTable.Entry e, double distance) {
@@ -43,7 +45,7 @@ public class ShotSolver {
     }
 
     public Solution solve(double x, double y, double heading, double vx, double vy, double omega,
-                          double goalX, double goalY) {
+                          double goalX, double goalY, String location) {
         double h = heading + omega * latency;
         double cx = x + vx * latency;
         double cy = y + vy * latency;
@@ -56,7 +58,8 @@ public class ShotSolver {
         double svx = vx - omega * ry;
         double svy = vy + omega * rx;
 
-        lateral = (sx - goalX) * SolverTune.rightX + (sy - goalY) * SolverTune.rightY;
+        double isAudience = compare(location, "Audience") ? 1 : -1;
+        lateral = ((sx - goalX) * SolverTune.rightX + (sy - goalY) * SolverTune.rightY) * isAudience;
         double shift = Math.max(-SolverTune.maxLateralShift, Math.min(SolverTune.maxLateralShift, -SolverTune.lateralGain * lateral));
         double tx = goalX + SolverTune.rightX * shift;
         double ty = goalY + SolverTune.rightY * shift;

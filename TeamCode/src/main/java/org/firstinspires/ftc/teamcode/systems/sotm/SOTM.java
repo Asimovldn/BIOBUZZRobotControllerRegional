@@ -56,19 +56,19 @@ public class SOTM {
     }
 
     /** visionAngle: turret angle (deg) the Limelight says points at the goal. Only learns while stationary. */
-    public boolean learnBias(double visionAngle, Pose pose, Pose goal) {
+    public boolean learnBias(double visionAngle, Pose pose, Pose goal, String location) {
         if (Tune.biasGain <= 0) return false;
         if (speed() > Tune.stationarySpeed || Math.abs(omega) > Tune.stationaryOmega) return false;
 
-        double ideal = Util.wrapDeg(visionAngle - directTurretAngleDeg(pose, goal));
+        double ideal = Util.wrapDeg(visionAngle - directTurretAngleDeg(pose, goal, location));
         if (Math.abs(ideal) > Tune.maxBias) return false;
 
         bias += Tune.biasGain * (ideal - bias);
         return true;
     }
 
-    public double directTurretAngleDeg(Pose pose, Pose goal) {
-        ShotSolver.Solution s = solver.solve(pose.x(), pose.y(), pose.heading(), 0, 0, 0, goal.x(), goal.y());
+    public double directTurretAngleDeg(Pose pose, Pose goal, String location) {
+        ShotSolver.Solution s = solver.solve(pose.x(), pose.y(), pose.heading(), 0, 0, 0, goal.x(), goal.y(), location);
         return rawTurretAngleDeg(s);
     }
 
@@ -114,9 +114,9 @@ public class SOTM {
         lastX = x; lastY = y; lastH = heading; lastNs = nowNs;
     }
 
-    public ShotSolver.Solution solve(Pose pose, Pose goal) {
+    public ShotSolver.Solution solve(Pose pose, Pose goal, String location) {
         Pose aim = biasedGoal(pose, goal);
-        return solver.solve(pose.x(), pose.y(), pose.heading(), vx, vy, omega, aim.x(), aim.y());
+        return solver.solve(pose.x(), pose.y(), pose.heading(), vx, vy, omega, aim.x(), aim.y(), location);
     }
 
     /** Robot on the right of the hive opening (looking at it from outside) aims further left, and the mirror image. */

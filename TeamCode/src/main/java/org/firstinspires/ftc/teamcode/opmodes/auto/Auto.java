@@ -223,9 +223,9 @@ public abstract class Auto extends RobotOpMode {
         // turret.setRangeHit(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
 
         Double vision = turret.consumeVisionAngle();
-        if (vision != null && AutoTune.learnBias) sotm.learnBias(vision, pose, goal);
+        if (vision != null && AutoTune.learnBias) sotm.learnBias(vision, pose, goal, runtime.location);
 
-        ShotSolver.Solution solution = sotm.solve(pose, goal);
+        ShotSolver.Solution solution = sotm.solve(pose, goal, runtime.location);
         shot = solution.valid ? solution : null;
         if (shot == null) return;
 
@@ -337,8 +337,8 @@ public abstract class Auto extends RobotOpMode {
         if (compare(where, "Audience")) {
             return sequential(
                     setIntake(0),
-                    instant(() -> ramp.set(ramp.on())),
                     followPath("preFlowerAudience"),
+                    instant(() -> ramp.set(ramp.on())),
                     followPath("flowerAudience", AutoTune.flowerTimeoutMs),
                     setIntake(1),
                     waitMs(AutoTune.feedMs * 0.8),
@@ -351,6 +351,9 @@ public abstract class Auto extends RobotOpMode {
         }
 
         return sequential(
+                instant(() -> ramp.set(ramp.off())),
+                waitMs(40),
+                followPath("preFlowerScoring", AutoTune.flowerTimeoutMs),
                 instant(() -> ramp.set(ramp.on())),
                 waitMs(AutoTune.flowerRampMs / 3),
                 setIntake(1),
@@ -423,7 +426,6 @@ public abstract class Auto extends RobotOpMode {
                 .setDone(() -> volleyDone((System.nanoTime() - startNs.get()) * 1e-6, ms))
                 .setEnd(c -> {
                     shooter.setFeeding(false);
-                    intake.setThrottle(0);
                 });
     }
 
@@ -538,6 +540,7 @@ public abstract class Auto extends RobotOpMode {
 
         telemetry.addData("Flywheel", shooter.Speed());
         telemetry.addData("Flywheel target", shooter.getTargetVelocity());
+        telemetry.addData("Intake: ", intake.motor.getPower());
         telemetry.addData("flower servo: ", ramp.getPosition());
         telemetry.addData("Ready", readyToShoot());
         telemetry.update();
@@ -567,15 +570,15 @@ public abstract class Auto extends RobotOpMode {
 
             startPoseA = poseFactory.of(59, 8, 90);
             gardenPose = poseFactory.of(12.7, 8.2, 180);
-            preFlowerScoring = poseFactory.of(49.5, 115, 90);
-            flowerScoringPose = poseFactory.of(49.1, 131.7, 90);
+            preFlowerScoring = poseFactory.of(49.8, 113, 90);
+            flowerScoringPose = poseFactory.of(49.8, 131.7, 90);
 
             preFlowerAudience = poseFactory.of(26, 49.5, 180);
-            flowerAudiencePose = poseFactory.of(11.7, 49.5, 180);
+            flowerAudiencePose = poseFactory.of(12.5, 49.5, 180);
 
             preGardenPose = poseFactory.of(26, 8.7, 180);
             parkPoseA = poseFactory.of(11.4, 114, 0);
-            scoringPose = poseFactory.of(48.25, 127, 270);
+            scoringPose = poseFactory.of(52.25, 129, 270);
 
             Pose flowerToFlowerCtrl = poseFactory.of(18.2, 99, 0);
             Pose gardenToScoringCtrl = poseFactory.of(17.45, 80.7, 0);
@@ -589,6 +592,7 @@ public abstract class Auto extends RobotOpMode {
             register("toScoring", curve(flowerAudiencePose, flowerToFlowerCtrl, flowerToFlowerCtrl2, scoringPose).linear(flowerAudiencePose, scoringPose));
             register("fromGardenScore", curve(gardenPose, gardenToScoringCtrl, scoringPose).reverseTangent());
 
+            register("preFlowerScoring", line(scoringPose, preFlowerScoring).linear(scoringPose, preFlowerScoring));
             register("flowerScoring", line(preFlowerScoring, flowerScoringPose).linear(preFlowerScoring, flowerScoringPose));
 
             register("preFlowerAudience", line(startPoseA, preFlowerAudience).linear(startPoseA, preFlowerAudience));

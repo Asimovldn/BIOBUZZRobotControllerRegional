@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.systems.hardware;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
@@ -15,6 +16,7 @@ public class Intake extends Mechanism {
     @Override
     public void setup() {
         motor = runtime.hardwareMap.get(DcMotorEx.class, "intake");
+        motor.setDirection(DcMotorSimple.Direction.REVERSE);
         motor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(constants.kP, 0, 0, constants.kF));
     }
 }

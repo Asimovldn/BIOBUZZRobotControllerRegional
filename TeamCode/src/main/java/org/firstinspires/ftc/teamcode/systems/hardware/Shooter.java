@@ -19,7 +19,7 @@ public class Shooter extends Mechanism {
 
     @Config
     public static class Tuning {
-        public static double feedPower = 1;
+        public static double feedPower = 0.97;
 
         public static double kP = 25;
         public static double kI = 0;
@@ -50,13 +50,13 @@ public class Shooter extends Mechanism {
     @Config
     public static class PowerTuning {
         public static boolean enabled = true;
-        public static boolean voltageComp = true;
-        public static double kS = 0;
-        public static double kV = 0.00036;
-        public static double kP = 0.002;
-        public static double kI = 0;
         public static double kD = 0;
+        public static double kI = 0;
+        public static double kP = 0.032;
+        public static double kS = 0;
+        public static double kV = 0.00052;
         public static double maxPower = 1;
+        public static boolean voltageComp = true;
     }
 
     private DcMotorEx flywheel, feeder;
