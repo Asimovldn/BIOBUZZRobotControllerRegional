@@ -358,7 +358,7 @@ public abstract class Auto extends RobotOpMode {
                 waitMs(AutoTune.flowerRampMs / 3),
                 setIntake(1),
                 followPath("flowerScoring", AutoTune.flowerTimeoutMs),
-                waitMs(AutoTune.flowerRampMs),
+                waitMs(AutoTune.feedMs * 0.7),
                 setIntake(0.5),
                 followPath("backupScoring", AutoTune.flowerTimeoutMs),
                 waitMs(AutoTune.flowerRampMs),
