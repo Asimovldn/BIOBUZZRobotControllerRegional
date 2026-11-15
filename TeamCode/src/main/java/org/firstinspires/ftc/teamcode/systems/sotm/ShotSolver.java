@@ -34,6 +34,7 @@ public class ShotSolver {
         public static double rightX = -1;
         public static double rightY = 0;
         public static boolean ballisticTof = true;
+        public static double velocityGain = 1;
     }
 
     private static double tofFor(ShotTable.Entry e, double distance) {
@@ -70,8 +71,8 @@ public class ShotSolver {
         double tof = tofFor(e, d);
 
         for (int i = 0; i < iterations; i++) {
-            ax = tx - svx * tof;
-            ay = ty - svy * tof;
+            ax = tx - svx * tof * velocityGain;
+            ay = ty - svy * tof * velocityGain;
             d = Math.hypot(ax - sx, ay - sy);
             e = table.get(d);
             tof += damp * (tofFor(e, d) - tof);
