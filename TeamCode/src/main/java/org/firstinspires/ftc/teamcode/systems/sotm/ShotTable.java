@@ -18,9 +18,10 @@ public class ShotTable {
     public static class Ballistics {
         public static double launchDeg = Shooter.HOOD_DEG;
 
-        /** Height of the goal opening above the ball exit point, inches. Measure it. */
+        /** TODO: Height of the goal opening above the ball exit point, inches. Measure it. */
         public static double goalRiseIn = 25;
 
+        // TODO: tune this
         public static double dragFactor = 1.0;
     }
 
