@@ -121,11 +121,7 @@ public class SOTM {
 
     /** Robot on the right of the hive opening (looking at it from outside) aims further left, and the mirror image. */
     public static Pose biasedGoal(Pose pose, Pose goal) {
-        double right = goal.y() < Context.FIELD_CENTER ? 1 : -1;
-        double lateral = (pose.x() - goal.x()) * right;
-        double shift = Math.max(-Tune.lateralBiasMaxIn, Math.min(Tune.lateralBiasMaxIn, Tune.lateralBiasPerIn * lateral));
-
-        return new Pose(goal.x() - right * shift, goal.y());
+        return goal;
     }
 
     public double turretAngleDeg(ShotSolver.Solution s) {

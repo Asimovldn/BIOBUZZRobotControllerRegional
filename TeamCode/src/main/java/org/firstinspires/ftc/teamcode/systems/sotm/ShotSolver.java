@@ -34,7 +34,6 @@ public class ShotSolver {
         public static double rightX = -1;
         public static double rightY = 0;
         public static boolean ballisticTof = true;
-        public static double velocityGain = 1;
     }
 
     private static double tofFor(ShotTable.Entry e, double distance) {
