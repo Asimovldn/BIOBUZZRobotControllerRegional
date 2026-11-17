@@ -19,6 +19,10 @@ public class SOTM {
         /** Inches the aim point moves away from the robot's side per inch the robot is off the hive axis. */
         public static double lateralBiasPerIn = 0.08;
         public static double lateralBiasMaxIn = 4;
+        /** Speeds below this (in/s) count as standing still, the rest is shrunk smoothly. */
+        public static double minLeadSpeed = 3;
+        /** Use finite-difference pose velocity (filtered by tau) instead of follower.velocity(). */
+        public static boolean poseDiffVelocity = false;
     }
 
     public final ShotTable table = new ShotTable();
@@ -77,6 +81,11 @@ public class SOTM {
     }
 
     public void update(Pose pose, Velocity velocity) {
+        if (Tune.poseDiffVelocity) {
+            update(pose.x(), pose.y(), pose.heading(), System.nanoTime());
+            return;
+        }
+
         lastX = pose.x();
         lastY = pose.y();
         lastH = pose.heading();
@@ -116,7 +125,10 @@ public class SOTM {
 
     public ShotSolver.Solution solve(Pose pose, Pose goal, String location) {
         Pose aim = biasedGoal(pose, goal);
-        return solver.solve(pose.x(), pose.y(), pose.heading(), vx, vy, omega, aim.x(), aim.y(), location);
+        double sp = Math.hypot(vx, vy);
+        double k = sp <= Tune.minLeadSpeed ? 0 : (sp - Tune.minLeadSpeed) / sp;
+
+        return solver.solve(pose.x(), pose.y(), pose.heading(), vx * k, vy * k, omega, aim.x(), aim.y(), location);
     }
 
     /** Robot on the right of the hive opening (looking at it from outside) aims further left, and the mirror image. */

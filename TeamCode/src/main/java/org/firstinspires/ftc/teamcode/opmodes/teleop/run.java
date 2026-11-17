@@ -38,10 +38,11 @@ public class run extends LinearOpMode {
                 } else if (gamepad2.dpadRightWasPressed() || gamepad1.dpadRightWasPressed()) {
                     servo.setPosition(1);
                 }
-            }
 
-            ramp.set(0);
-            ramp.set(1);
+                if (gamepad1.leftStickButtonWasPressed()) {
+                    ramp.alter();
+                }
+            }
 
             telemetry.addData("Servo Pos: ", servo.getPosition());
             telemetry.addData("Servo Pos Ramp: ", ramp.getPosition());

@@ -12,6 +12,7 @@ public class ShotSolver {
         public double distance;
         public double velocity, hood, tof;
         public double aimX, aimY;
+        public double leadIn, latencyIn;
     }
 
     public final ShotTable table;
@@ -34,7 +35,12 @@ public class ShotSolver {
         public static double rightX = -1;
         public static double rightY = 0;
         public static boolean ballisticTof = true;
+        public static double velocityGain = 0.6; // TODO: tune this
+        public static double maxLeadIn = 40;
     }
+
+    /* TODO: quando andando de lado em máxima velocidade, a mira está até correta,
+    mas falta velocidade na bola, averiguar do porque dessa resenha */
 
     private static double tofFor(ShotTable.Entry e, double distance) {
         return SolverTune.ballisticTof ? ShotTable.ballisticTof(distance) : e.tof;
@@ -70,8 +76,16 @@ public class ShotSolver {
         double tof = tofFor(e, d);
 
         for (int i = 0; i < iterations; i++) {
-            ax = tx - svx * tof * velocityGain;
-            ay = ty - svy * tof * velocityGain;
+            double lx = svx * tof * SolverTune.velocityGain;
+            double ly = svy * tof * SolverTune.velocityGain;
+            double len = Math.hypot(lx, ly);
+            if (len > SolverTune.maxLeadIn) {
+                lx *= SolverTune.maxLeadIn / len;
+                ly *= SolverTune.maxLeadIn / len;
+            }
+
+            ax = tx - lx;
+            ay = ty - ly;
             d = Math.hypot(ax - sx, ay - sy);
             e = table.get(d);
             tof += damp * (tofFor(e, d) - tof);
@@ -87,6 +101,8 @@ public class ShotSolver {
         s.tof = tof;
         s.aimX = ax;
         s.aimY = ay;
+        s.leadIn = Math.hypot(ax - tx, ay - ty);
+        s.latencyIn = Math.hypot(vx, vy) * latency;
         return s;
     }
 }

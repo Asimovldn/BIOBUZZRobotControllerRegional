@@ -8,6 +8,7 @@ import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.RobotOpMode;
@@ -47,16 +48,41 @@ public class SOTMTeleOp extends RobotOpMode {
     }
 
     /** Red poses -> blue: the field is rotationally symmetric (same as Auto.mirrorPose). */
-    private Pose forAlliance(Pose red) {
+    protected Pose forAlliance(Pose red) {
         return ResetPoses.forAlliance(red, getAlliance() == Context.Alliance.BLUE);
     }
 
-    private void resetPose(Pose pose) {
+    protected void resetPose(Pose pose) {
         getFollower().setPose(pose);
-        gamepad1.rumbleBlips(1);
+        rumblePad().rumbleBlips(1);
     }
 
-    private void handleResets() {
+    protected static class Controls {
+        boolean spin, feed, toggleSotm, velUp, velDown, toggleManual, resetTurret, logShot, rampAlter, rampMax;
+        double intake;
+    }
+
+    protected Controls controls() {
+        Controls c = new Controls();
+        c.toggleSotm = gamepad2.aWasPressed();
+        c.velUp = gamepad2.dpadUpWasPressed();
+        c.velDown = gamepad2.dpadDownWasPressed();
+        c.spin = gamepad2.left_trigger > 0.5;
+        c.toggleManual = gamepad2.leftBumperWasPressed();
+        c.rampAlter = gamepad1.rightStickButtonWasPressed();
+        c.rampMax = gamepad1.leftStickButtonWasPressed();
+        c.intake = gamepad2.left_stick_y;
+        c.feed = gamepad2.right_bumper;
+        c.resetTurret = gamepad2.yWasPressed();
+        c.logShot = gamepad2.xWasPressed();
+        return c;
+    }
+
+    protected Gamepad rumblePad() {
+        return gamepad2;
+    }
+
+    protected void handleResets() {
         Pose now = getFollower().pose();
 
         if (gamepad1.aWasPressed()) resetPose(forAlliance(ResetPoses.AUDIENCE_START));
@@ -71,7 +97,7 @@ public class SOTMTeleOp extends RobotOpMode {
         if (gamepad1.dpadRightWasPressed()) resetPose(wallPose(now, ResetPoses.Wall.RIGHT, front));
     }
 
-    private Pose wallPose(Pose now, ResetPoses.Wall wall, boolean front) {
+    protected Pose wallPose(Pose now, ResetPoses.Wall wall, boolean front) {
         return front ? ResetPoses.wallFront(now, wall) : ResetPoses.wall(now, wall);
     }
 
@@ -106,6 +132,7 @@ public class SOTMTeleOp extends RobotOpMode {
         Pose pose = follower.pose();
         Velocity vel = follower.velocity();
         sotm.update(pose, vel);
+        Controls c = controls();
 
         Pose goal = goal();
         // if (goal != null) getTurret().setRangeHint(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
@@ -116,21 +143,21 @@ public class SOTMTeleOp extends RobotOpMode {
         shot = goal == null ? null : sotm.solve(pose, goal, runtime.location);
         boolean hasShot = shot != null && shot.valid;
 
-        if (gamepad2.aWasPressed()) {
+        if (c.toggleSotm) {
             sotmEnabled = !sotmEnabled;
             getTurret().setMode(sotmEnabled ? Turret.Mode.TRACK : Turret.Mode.AIMING);
-            gamepad2.rumbleBlips(sotmEnabled ? 1 : 2);
+            rumblePad().rumbleBlips(sotmEnabled ? 1 : 2);
         }
 
         if (sotmEnabled && hasShot) {
             getTurret().setTrackAngle(sotm.turretAngleDeg(shot));
         }
 
-        if (gamepad2.dpadUpWasPressed()) manualVelocity += 10;
-        if (gamepad2.dpadDownWasPressed()) manualVelocity -= 10;
+        if (c.velUp) manualVelocity += 10;
+        if (c.velDown) manualVelocity -= 10;
 
-        spinEnabled = gamepad2.left_trigger > 0.5;
-        if (gamepad2.leftBumperWasPressed()) manualOnly = !manualOnly;
+        spinEnabled = c.spin;
+        if (c.toggleManual) manualOnly = !manualOnly;
 
         handleResets();
 
@@ -145,26 +172,26 @@ public class SOTMTeleOp extends RobotOpMode {
         double velocity = !sotm.table.isEmpty() && hasShot && !manualOnly ? shot.velocity : manualVelocity;
         getShooter().spinTo(spinEnabled ? velocity : 0);
 
-        getIntake().setThrottle(gamepad2.left_stick_y);
+        getIntake().setThrottle(c.intake);
 
         boolean turretReady = !sotmEnabled || getTurret().isOnTarget(READY_TURRET_DEG);
         boolean ready = getShooter().isReady() && turretReady;
 
-        getShooter().setFeeding(gamepad2.right_bumper && getShooter().canFeed() && turretReady);
+        getShooter().setFeeding(c.feed && getShooter().canFeed() && turretReady);
 
-        if (ready) gamepad2.rumble(100);
+        if (ready) rumblePad().rumble(100);
 
-        if (gamepad2.yWasPressed()) {
+        if (c.resetTurret) {
             getTurret().reset();
             sotm.reset();
             sotm.resetBias();
-            gamepad2.rumbleBlips(2);
+            rumblePad().rumbleBlips(2);
         }
 
 
-        if (gamepad2.xWasPressed()) {
+        if (c.logShot) {
             logShot();
-            gamepad2.rumbleBlips(1);
+            rumblePad().rumbleBlips(1);
         }
 
         drive(gamepad1);
@@ -173,6 +200,7 @@ public class SOTMTeleOp extends RobotOpMode {
         telemetry.addData("Table", sotm.table.isEmpty() ? "EMPTY (fallback ToF, manual velocity)" : sotm.table.size() + " rows");
         telemetry.addData("Location", runtime.location);
         telemetry.addData("Pose", pose.toString());
+        speedCheck(pose, vel);
         telemetry.addData("Speed (in/s)", sotm.speed());
         telemetry.addData("Omega (rad/s)", sotm.omega());
         telemetry.addData("Servo ", getTurret().getServoPosition());
@@ -185,6 +213,9 @@ public class SOTMTeleOp extends RobotOpMode {
             telemetry.addData("ToF", shot.tof);
             telemetry.addData("ToF (ballistic est.)", ShotTable.ballisticTof(shot.distance));
             telemetry.addData("Aim point", "%.1f, %.1f", shot.aimX, shot.aimY);
+            telemetry.addData("Lead (in)", "%.1f (gain %.2f, cap %.0f)", shot.leadIn, ShotSolver.SolverTune.velocityGain, ShotSolver.SolverTune.maxLeadIn);
+            telemetry.addData("Latency shift (in)", shot.latencyIn);
+            telemetry.addData("Turret lead (deg)", getTurret().getTrackLeadDeg());
             telemetry.addData("Turret cmd", sotm.turretAngleDeg(shot));
         }
 
@@ -206,6 +237,28 @@ public class SOTMTeleOp extends RobotOpMode {
         );
 
         if (hasShot) Drawing.drawOffset(pose, new Pose(shot.aimX, shot.aimY));
+    }
+
+    private Pose diffPose;
+    private long diffNs;
+    private double fdVx, fdVy;
+
+    private void speedCheck(Pose pose, Velocity vel) {
+        long now = System.nanoTime();
+        if (diffPose != null) {
+            double dt = (now - diffNs) * 1e-9;
+            if (dt > 1e-3) {
+                fdVx += 0.2 * ((pose.x() - diffPose.x()) / dt - fdVx);
+                fdVy += 0.2 * ((pose.y() - diffPose.y()) / dt - fdVy);
+            }
+        }
+        diffPose = pose;
+        diffNs = now;
+
+        double fd = Math.hypot(fdVx, fdVy), pd = Math.hypot(vel.vx, vel.vy);
+        telemetry.addData("Velocity pedro", "%.1f, %.1f (%.1f)", vel.vx, vel.vy, pd);
+        telemetry.addData("Velocity pose-diff", "%.1f, %.1f (%.1f)", fdVx, fdVy, fd);
+        telemetry.addData("Velocity ratio pedro/diff", fd > 8 ? pd / fd : Double.NaN);
     }
 
     private void logShot() {

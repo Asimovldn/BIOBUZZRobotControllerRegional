@@ -159,6 +159,7 @@ public class Turret extends Mechanism {
     public double getAngle() { return currentAngle; }
     public double getError() { return err + shortfall; }
     public double getShortfall() { return shortfall; }
+    public double getTrackLeadDeg() { return Range.clip(trackVel, -slewDps(), slewDps()) * Tune.trackLeadSec; }
     public double getTargetAngle() { return targetAngle; }
     public double getServoPosition() { return servo.getPosition(); }
     public double getTa() { return seenTa; }
