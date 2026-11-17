@@ -293,10 +293,17 @@ public abstract class Auto extends RobotOpMode {
     }
 
     protected boolean readyToShoot() {
+        return aimed() && shooter.isReady();
+    }
+
+    protected boolean canFeedNow() {
+        return aimed() && shooter.canFeed();
+    }
+
+    private boolean aimed() {
         return shot != null
                 && turret.getMode() == Turret.Mode.TRACK
-                && turret.isOnTarget(AutoTune.turretReadyDeg)
-                && shooter.isReady();
+                && turret.isOnTarget(AutoTune.turretReadyDeg);
     }
 
     protected Command spin(boolean on) {
@@ -415,7 +422,7 @@ public abstract class Auto extends RobotOpMode {
     protected Command feed(double ms) {
         final AtomicLong startNs = new AtomicLong();
         return infinite(() -> {
-            shooter.setFeeding(readyToShoot());
+            shooter.setFeeding(canFeedNow());
             intake.setThrottle(1);
         })
                 .setStart(() -> {

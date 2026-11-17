@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A: spin / stop. D-pad up/down: target +-10 (left bumper: +-50). Right bumper: feed. X: reset stats.
+ * A: spin / stop. D-pad up/down: target +-10 (left bumper: +-50). Right bumper: feed when canFeed (hold B to force). X: reset stats.
  * Left bumper + Y: power sweep that measures kS and kV for Shooter.PowerTuning.
  */
 @TeleOp(name = "Shooter Tune", group = "Test")
@@ -70,7 +70,8 @@ public class ShooterTune extends RobotOpMode {
         telemetry.addData("Target", target);
         telemetry.addData("Speed", speed);
         telemetry.addData("Error", target - speed);
-        telemetry.addData("Ready", sh.isReady());
+        telemetry.addData("Ready (strict)", sh.isReady());
+        telemetry.addData("Can feed", sh.canFeed());
         telemetry.addData("Battery", sh.getVoltage());
         telemetry.addData("Rise to ready (ms)", riseMs);
         telemetry.addData("Overshoot", spin ? peak - target : 0);
@@ -95,7 +96,8 @@ public class ShooterTune extends RobotOpMode {
         if (gamepad1.xWasPressed()) resetStats();
 
         sh.spinTo(spin ? target : 0);
-        sh.setFeeding(gamepad1.right_bumper);
+        boolean feed = gamepad1.right_bumper && (gamepad1.b || sh.canFeed());
+        sh.setFeeding(feed);
         getIntake().setThrottle(gamepad1.right_bumper ? 1 : 0);
     }
 

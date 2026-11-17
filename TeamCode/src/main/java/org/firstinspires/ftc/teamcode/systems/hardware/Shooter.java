@@ -39,6 +39,8 @@ public class Shooter extends Mechanism {
         public static double readyHysteresis = 15;
         public static double maxOvershoot = 20;
         public static double readyHoldMs = 30;
+        public static double feedTolerance = 100;
+        public static double feedLatchMs = 600;
 
         public static double dipTicks = 50;
         public static double rearmTicks = 20;
@@ -69,7 +71,7 @@ public class Shooter extends Mechanism {
     private double lastTarget;
     private double appliedP = Double.NaN, appliedI, appliedD, appliedF;
     private long lastVoltageNs, lastTargetChangeNs, lastFeedNs, lastShotNs, readySinceNs;
-    private boolean spinning, ready, armed, feedOn, powerMode, modeKnown;
+    private boolean spinning, ready, feedOk, armed, feedOn, powerMode, modeKnown;
     private int shots;
 
     @Override
@@ -203,6 +205,7 @@ public class Shooter extends Mechanism {
     private void updateReady(long now, double target) {
         if (target == 0) {
             ready = false;
+            feedOk = false;
             armed = false;
             readySinceNs = 0;
             return;
@@ -219,6 +222,14 @@ public class Shooter extends Mechanism {
         } else if (!ready) {
             if (readySinceNs == 0) readySinceNs = now;
             ready = (now - readySinceNs) * 1e-6 >= Tuning.readyHoldMs;
+        }
+
+        if (ready) {
+            feedOk = true;
+        } else if (feedOk) {
+            boolean active = feedOn || (now - lastFeedNs) * 1e-6 < Tuning.feedLatchMs;
+            boolean within = diff > -Tuning.feedTolerance && diff < Tuning.maxOvershoot + Tuning.readyHysteresis;
+            feedOk = active && within;
         }
 
         detectShot(now, target - speed);
@@ -257,9 +268,17 @@ public class Shooter extends Mechanism {
         return voltage;
     }
 
-    /** Debounced, with hysteresis: within readyTolerance below the target and at most maxOvershoot above it. */
+    /** Strict: within readyTolerance of the target. Use it for the driver warning and to start a volley. */
     public boolean isReady() {
         return flywheel != null && targetVelocity != 0 && ready;
+    }
+
+    /**
+     * Strict ready starts it. While balls keep feeding it stays true until the speed drops more than
+     * feedTolerance below the target, or feeding has been idle for feedLatchMs.
+     */
+    public boolean canFeed() {
+        return flywheel != null && targetVelocity != 0 && (ready || feedOk);
     }
 
     /** Balls detected leaving since the last reset, from the RPM dip while feeding. */
@@ -299,6 +318,7 @@ public class Shooter extends Mechanism {
 
         feedOn = false;
         ready = false;
+        feedOk = false;
         armed = false;
         spinning = false;
         pid.reset();
@@ -307,7 +327,7 @@ public class Shooter extends Mechanism {
     /** Feeds only while the flywheel is ready. Never finishes by itself, cancel it or use {@link #setFeeding(boolean)}. */
     public Command enableLaunch() {
         return Command.build()
-                .setExecute(() -> setFeeding(isReady()))
+                .setExecute(() -> setFeeding(canFeed()))
                 .requiring(this);
     }
 

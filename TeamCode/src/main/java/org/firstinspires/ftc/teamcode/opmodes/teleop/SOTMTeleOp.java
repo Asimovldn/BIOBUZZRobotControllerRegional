@@ -130,7 +130,7 @@ public class SOTMTeleOp extends RobotOpMode {
         boolean turretReady = !sotmEnabled || getTurret().isOnTarget(READY_TURRET_DEG);
         boolean ready = getShooter().isReady() && turretReady;
 
-        getShooter().setFeeding(gamepad2.right_bumper && ready);
+        getShooter().setFeeding(gamepad2.right_bumper && getShooter().canFeed() && turretReady);
 
         if (ready) gamepad2.rumble(100);
 
