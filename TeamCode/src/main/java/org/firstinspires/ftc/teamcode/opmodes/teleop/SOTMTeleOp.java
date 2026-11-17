@@ -17,6 +17,7 @@ import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotData;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotTable;
+import org.firstinspires.ftc.teamcode.util.ResetPoses;
 import org.firstinspires.ftc.teamcode.util.Util;
 
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
@@ -29,9 +30,7 @@ import java.util.Locale;
 public class SOTMTeleOp extends RobotOpMode {
     private static final double READY_TURRET_DEG = 4;
 
-    private static final Pose resetPoseA = new Pose(10, 132, Math.toRadians(270));
-    private static final Pose resetPoseB = new Pose(59, 8, Math.toRadians(90));
-    private static final Pose defaultStart = new Pose(59, 8, Math.toRadians(90));
+    private static final Pose defaultStart = ResetPoses.AUDIENCE_START;
 
     protected final SOTM sotm = new SOTM();
     protected boolean manualOnly = false;
@@ -49,9 +48,31 @@ public class SOTMTeleOp extends RobotOpMode {
 
     /** Red poses -> blue: the field is rotationally symmetric (same as Auto.mirrorPose). */
     private Pose forAlliance(Pose red) {
-        if (getAlliance() != Context.Alliance.BLUE) return red;
+        return ResetPoses.forAlliance(red, getAlliance() == Context.Alliance.BLUE);
+    }
 
-        return new Pose(2 * Context.FIELD_CENTER - red.x(), 2 * Context.FIELD_CENTER - red.y(), Util.wrapRad(red.heading() + Math.PI));
+    private void resetPose(Pose pose) {
+        getFollower().setPose(pose);
+        gamepad1.rumbleBlips(1);
+    }
+
+    private void handleResets() {
+        Pose now = getFollower().pose();
+
+        if (gamepad1.aWasPressed()) resetPose(forAlliance(ResetPoses.AUDIENCE_START));
+        if (gamepad1.bWasPressed()) resetPose(forAlliance(ResetPoses.SCORING_CORNER));
+        if (gamepad1.xWasPressed()) resetPose(forAlliance(ResetPoses.GARDEN));
+        if (gamepad1.yWasPressed()) resetPose(forAlliance(ResetPoses.SCORING_FLOWER));
+
+        boolean front = gamepad1.left_bumper;
+        if (gamepad1.dpadDownWasPressed()) resetPose(wallPose(now, ResetPoses.Wall.AUDIENCE, front));
+        if (gamepad1.dpadUpWasPressed()) resetPose(wallPose(now, ResetPoses.Wall.SCORING, front));
+        if (gamepad1.dpadLeftWasPressed()) resetPose(wallPose(now, ResetPoses.Wall.LEFT, front));
+        if (gamepad1.dpadRightWasPressed()) resetPose(wallPose(now, ResetPoses.Wall.RIGHT, front));
+    }
+
+    private Pose wallPose(Pose now, ResetPoses.Wall wall, boolean front) {
+        return front ? ResetPoses.wallFront(now, wall) : ResetPoses.wall(now, wall);
     }
 
     @Override
@@ -111,8 +132,7 @@ public class SOTMTeleOp extends RobotOpMode {
         spinEnabled = gamepad2.left_trigger > 0.5;
         if (gamepad2.leftBumperWasPressed()) manualOnly = !manualOnly;
 
-        if (gamepad1.aWasPressed()) getFollower().setPose(forAlliance(resetPoseB));
-        if (gamepad1.bWasPressed()) getFollower().setPose(forAlliance(resetPoseA));
+        handleResets();
 
         if (gamepad1.rightStickButtonWasPressed()) {
             ramp.alter();

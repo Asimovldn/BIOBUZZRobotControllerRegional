@@ -39,7 +39,7 @@ public class Shooter extends Mechanism {
         public static double readyHysteresis = 15;
         public static double maxOvershoot = 20;
         public static double readyHoldMs = 30;
-        public static double feedTolerance = 100;
+        public static double feedTolerance = 70; // ticks/s
         public static double feedLatchMs = 600;
 
         public static double dipTicks = 50;
