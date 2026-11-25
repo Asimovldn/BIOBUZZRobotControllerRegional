@@ -6,23 +6,22 @@ import com.pedropathing.math.Pose;
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.util.Util;
 
+import com.pedropathing.math.Vector2D;
 import com.pedropathing.math.Velocity;
 
 public class SOTM {
     @Config
     public static class Tune {
         public static double biasGain = 0.25;
-        public static double maxBias = 30;
-        public static double stationarySpeed = 4;
-        public static double stationaryOmega = 0.15;
-
-        /** Inches the aim point moves away from the robot's side per inch the robot is off the hive axis. */
-        public static double lateralBiasPerIn = 0.08;
         public static double lateralBiasMaxIn = 4;
-        /** Speeds below this (in/s) count as standing still, the rest is shrunk smoothly. */
+        public static double lateralBiasPerIn = 0.08;
+        public static double maxBias = 30;
         public static double minLeadSpeed = 3;
-        /** Use finite-difference pose velocity (filtered by tau) instead of follower.velocity(). */
         public static boolean poseDiffVelocity = false;
+        public static double speedCorrectionMultiplier = 0.0018;
+        public static double stationaryOmega = 0.15;
+        public static double stationarySpeed = 4;
+
     }
 
     public final ShotTable table = new ShotTable();

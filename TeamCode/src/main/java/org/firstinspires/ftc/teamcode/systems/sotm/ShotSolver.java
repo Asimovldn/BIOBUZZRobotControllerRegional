@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode.systems.sotm;
 import static org.firstinspires.ftc.teamcode.util.Util.compare;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.pedropathing.math.Pose;
+import com.pedropathing.math.Vector2D;
 
 public class ShotSolver {
     public static class Solution {
@@ -30,13 +32,13 @@ public class ShotSolver {
 
     @Config
     public static class SolverTune {
+        public static boolean ballisticTof = true;
         public static double lateralGain = -0.06;
         public static double maxLateralShift = 20;
+        public static double maxLeadIn = 40;
         public static double rightX = -1;
         public static double rightY = 0;
-        public static boolean ballisticTof = true;
-        public static double velocityGain = 0.6; // TODO: tune this
-        public static double maxLeadIn = 40;
+        public static double velocityGain = 1;
     }
 
     /* TODO: quando andando de lado em máxima velocidade, a mira está até correta,
@@ -48,6 +50,15 @@ public class ShotSolver {
 
     public ShotSolver(ShotTable table) {
         this.table = table;
+    }
+
+    public double getVelocityMultiplier(Pose pose, Pose goal, double vx, double vy) {
+        Vector2D direction = (goal.toVector2D().minus(pose.toVector2D())).normalized();
+        Vector2D velocity =  Vector2D.cartesian(vx,vy);
+
+        double goalDirectionSpeed = direction.dot(velocity);
+
+        return goalDirectionSpeed * SOTM.Tune.speedCorrectionMultiplier;
     }
 
     public Solution solve(double x, double y, double heading, double vx, double vy, double omega,
@@ -96,7 +107,7 @@ public class ShotSolver {
         s.fieldAngle = Math.atan2(ay - sy, ax - sx);
         s.launchHeading = h;
         s.distance = d;
-        s.velocity = e.velocity;
+        s.velocity = e.velocity + Math.abs(e.velocity * getVelocityMultiplier(new Pose(x, y), new Pose(ax, ay), vx, vy));
         s.hood = e.hood;
         s.tof = tof;
         s.aimX = ax;

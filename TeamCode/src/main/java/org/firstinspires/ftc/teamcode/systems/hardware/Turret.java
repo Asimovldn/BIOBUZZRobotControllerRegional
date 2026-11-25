@@ -31,6 +31,7 @@ public class Turret extends Mechanism {
         /** variável xoxé ferrou a torreta */
         public static double centerTrimDeg = 0.0;
         // TODO pensar numa forma de usar esse centerTrimDeg na partida pra alinhar o meio da torret manualmente
+        // tmnc ess eservo do caramba q fica saino
 
         public static double trackLeadSec = 0.04;
     }

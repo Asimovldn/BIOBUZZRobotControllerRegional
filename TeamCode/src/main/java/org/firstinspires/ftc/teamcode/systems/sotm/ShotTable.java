@@ -22,7 +22,7 @@ public class ShotTable {
         public static double goalRiseIn = 25;
 
         // TODO: tune this
-        public static double dragFactor = 1.0;
+        public static double dragFactor = 0.7;
     }
 
     /** Ideal projectile time of flight (no spin, no drag) at the fixed launch angle, a sanity check for the table. */
@@ -34,12 +34,13 @@ public class ShotTable {
     }
 
     public static class Entry {
-        public final double velocity, hood, tof;
+        public final double velocity, hood, tof, hVelocity;
 
-        public Entry(double velocity, double hood, double tof) {
+        public Entry(double velocity, double hood, double tof, double hVelocity) {
             this.velocity = velocity;
             this.hood = hood;
             this.tof = tof;
+            this.hVelocity = hVelocity;
         }
     }
 
@@ -54,7 +55,7 @@ public class ShotTable {
     }
 
     private final List<Row> rows = new ArrayList<>();
-    private Entry fallback = new Entry(0, 0, 0.45);
+    private Entry fallback = new Entry(0, 0, 0.45, 0);
 
     /** Fixed hood: distance in inches, velocity in flywheel ticks/s, tof in seconds. */
     public ShotTable add(double distance, double velocity, double tof) {
@@ -63,13 +64,14 @@ public class ShotTable {
 
     /** distance in inches, velocity in flywheel ticks/s, tof in seconds. */
     public ShotTable add(double distance, double velocity, double hood, double tof) {
-        rows.add(new Row(distance, new Entry(velocity, hood, tof)));
+        double hVelocity = distance / tof;
+        rows.add(new Row(distance, new Entry(velocity, hood, tof,hVelocity)));
         rows.sort(Comparator.comparingDouble(a -> a.distance));
         return this;
     }
 
-    public ShotTable fallback(double velocity, double hood, double tof) {
-        fallback = new Entry(velocity, hood, tof);
+    public ShotTable fallback(double velocity, double hood, double tof, double hVelocity) {
+        fallback = new Entry(velocity, hood, tof, hVelocity);
         return this;
     }
 
@@ -94,12 +96,41 @@ public class ShotTable {
             Row a = rows.get(i - 1);
             double span = b.distance - a.distance;
             double t = span < 1e-9 ? 0 : (distance - a.distance) / span;
+            double tof = lerp(a.entry.tof, b.entry.tof, t);
             return new Entry(
                     lerp(a.entry.velocity, b.entry.velocity, t),
                     lerp(a.entry.hood, b.entry.hood, t),
-                    lerp(a.entry.tof, b.entry.tof, t));
+                    tof,
+                    distance / tof);
         }
 
         return rows.get(n - 1).entry;
     }
+
+    public Entry getByHVelocity(double hVelocity)
+    {
+        int n = rows.size();
+        if (n == 0) return fallback;
+        if (hVelocity <= rows.get(0).entry.hVelocity) return rows.get(0).entry;
+        if (hVelocity >= rows.get(n - 1).entry.hVelocity) return rows.get(n - 1).entry;
+
+        for (int i = 1; i < n; i++) {
+            Row b = rows.get(i);
+            if (hVelocity > b.entry.hVelocity) continue;
+
+            Row a = rows.get(i - 1);
+            double span = b.entry.hVelocity - a.entry.hVelocity;
+            double t = span < 1e-9 ? 0 : (hVelocity - a.entry.hVelocity) / span;
+            double tof = lerp(a.entry.tof, b.entry.tof, t);
+            return new Entry(
+                    lerp(a.entry.velocity, b.entry.velocity, t),
+                    lerp(a.entry.hood, b.entry.hood, t),
+                    tof,
+                    hVelocity);
+        }
+
+        return rows.get(n - 1).entry;
+    }
+
+
 }
