@@ -28,7 +28,7 @@ import org.firstinspires.ftc.teamcode.pedro.Drawing;
 import org.firstinspires.ftc.teamcode.systems.hardware.Ramp;
 import org.firstinspires.ftc.teamcode.systems.hardware.Intake;
 import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
-import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import org.firstinspires.ftc.teamcode.systems.hardware.TurretOLD;
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotData;
@@ -116,7 +116,7 @@ public abstract class Auto extends RobotOpMode {
 
         intake = new Intake();
         shooter = new Shooter();
-        turret = new Turret(runtime);
+        turretOLD = new TurretOLD(runtime);
         ramp = new Ramp();
 
         drivetrain = new LazyDrive();
@@ -170,7 +170,7 @@ public abstract class Auto extends RobotOpMode {
 
         setup();
 
-        getTurret().setMode(Turret.Mode.TRACK);
+        getTurret().setMode(TurretOLD.Mode.TRACK);
 
         if (plan != null) Scheduler.schedule(plan);
 
@@ -222,7 +222,7 @@ public abstract class Auto extends RobotOpMode {
 
         // turret.setRangeHit(Math.hypot(goal.x() - pose.x(), goal.y() - pose.y()));
 
-        Double vision = turret.consumeVisionAngle();
+        Double vision = turretOLD.consumeVisionAngle();
         if (vision != null && AutoTune.learnBias) sotm.learnBias(vision, pose, goal, runtime.location);
 
         ShotSolver.Solution solution = sotm.solve(pose, goal, runtime.location);
@@ -230,7 +230,7 @@ public abstract class Auto extends RobotOpMode {
         if (shot == null) return;
 
         turretCmd = sotm.turretAngleDeg(shot);
-        turret.setTrackAngle(turretCmd);
+        turretOLD.setTrackAngle(turretCmd);
 
         if (autoSpin) shooter.spinTo(shot.velocity);
     }
@@ -261,7 +261,7 @@ public abstract class Auto extends RobotOpMode {
     }
 
     private boolean aimReachable() {
-        return shot == null || turret.canReach(turretCmd, AutoTune.turretReachMarginDeg);
+        return shot == null || turretOLD.canReach(turretCmd, AutoTune.turretReachMarginDeg);
     }
 
     private void turnForShot() {
@@ -302,8 +302,8 @@ public abstract class Auto extends RobotOpMode {
 
     private boolean aimed() {
         return shot != null
-                && turret.getMode() == Turret.Mode.TRACK
-                && turret.isOnTarget(AutoTune.turretReadyDeg);
+                && turretOLD.getMode() == TurretOLD.Mode.TRACK
+                && turretOLD.isOnTarget(AutoTune.turretReadyDeg);
     }
 
     protected Command spin(boolean on) {
@@ -539,7 +539,7 @@ public abstract class Auto extends RobotOpMode {
 
         if (shot != null) {
             telemetry.addData("Goal distance", shot.distance);
-            telemetry.addData("Turret err", turret.getError());
+            telemetry.addData("Turret err", turretOLD.getError());
             telemetry.addData("Turret cmd", turretCmd);
         }
 

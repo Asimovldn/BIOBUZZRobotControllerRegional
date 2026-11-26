@@ -13,7 +13,7 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.RobotOpMode;
 import org.firstinspires.ftc.teamcode.pedro.Drawing;
-import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import org.firstinspires.ftc.teamcode.systems.hardware.TurretOLD;
 import org.firstinspires.ftc.teamcode.systems.sotm.SOTM;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotData;
 import org.firstinspires.ftc.teamcode.systems.sotm.ShotSolver;
@@ -120,7 +120,7 @@ public class SOTMTeleOp extends RobotOpMode {
     public void setup() {
         Scheduler.reset();
         sotm.reset();
-        getTurret().setMode(Turret.Mode.TRACK);
+        getTurret().setMode(TurretOLD.Mode.TRACK);
 
         Drawing.init();
 
@@ -145,7 +145,7 @@ public class SOTMTeleOp extends RobotOpMode {
 
         if (c.toggleSotm) {
             sotmEnabled = !sotmEnabled;
-            getTurret().setMode(sotmEnabled ? Turret.Mode.TRACK : Turret.Mode.AIMING);
+            getTurret().setMode(sotmEnabled ? TurretOLD.Mode.TRACK : TurretOLD.Mode.AIMING);
             rumblePad().rumbleBlips(sotmEnabled ? 1 : 2);
         }
 

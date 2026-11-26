@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.RobotOpMode;
-import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import org.firstinspires.ftc.teamcode.systems.hardware.TurretOLD;
 
 import java.util.Arrays;
 
@@ -26,7 +26,7 @@ public class RedCalibrate extends RobotOpMode {
     @Override
     public void setup() {
         Scheduler.reset();
-        getTurret().setMode(Turret.Mode.AIMING);
+        getTurret().setMode(TurretOLD.Mode.AIMING);
         getTurret().reset();
     }
 

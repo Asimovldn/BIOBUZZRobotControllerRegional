@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.RobotOpMode;
 import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
-import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import org.firstinspires.ftc.teamcode.systems.hardware.TurretOLD;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +37,7 @@ public class ShooterTune extends RobotOpMode {
     @Override
     public void setup() {
         Scheduler.reset();
-        getTurret().setMode(Turret.Mode.TRACK);
+        getTurret().setMode(TurretOLD.Mode.TRACK);
     }
 
     @Override

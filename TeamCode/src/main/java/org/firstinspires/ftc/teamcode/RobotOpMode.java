@@ -14,7 +14,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.systems.hardware.Ramp;
 import org.firstinspires.ftc.teamcode.systems.hardware.Intake;
 import org.firstinspires.ftc.teamcode.systems.hardware.Shooter;
-import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import org.firstinspires.ftc.teamcode.systems.hardware.TurretOLD;
 import org.firstinspires.ftc.teamcode.systems.hardware.core.Mechanism;
 import org.firstinspires.ftc.teamcode.util.LazyDrive;
 import org.firstinspires.ftc.teamcode.util.Util;
@@ -24,7 +24,7 @@ import java.util.List;
 
 public class RobotOpMode extends OpMode {
     public Follower follower;
-    public Turret turret;
+    public TurretOLD turretOLD;
     public Shooter shooter;
     public Intake intake;
     public Ramp ramp;
@@ -60,7 +60,7 @@ public class RobotOpMode extends OpMode {
 
         intake = new Intake();
         shooter = new Shooter();
-        turret = new Turret(runtime);
+        turretOLD = new TurretOLD(runtime);
         ramp = new Ramp();
 
         drivetrain = new LazyDrive();
@@ -90,8 +90,8 @@ public class RobotOpMode extends OpMode {
         follower.update();
     }
 
-    public Turret getTurret() {
-        return turret;
+    public TurretOLD getTurret() {
+        return turretOLD;
     }
 
     public Shooter getShooter() { return shooter; }
@@ -167,7 +167,7 @@ public class RobotOpMode extends OpMode {
 
     @NonNull
     public List<Mechanism> getMechanisms() {
-        return Arrays.asList(intake, shooter, turret, ramp);
+        return Arrays.asList(intake, shooter, turretOLD, ramp);
     }
 
     /** Equivalent to super, use this to get access to ONLY {@code robotOpMode} methods */

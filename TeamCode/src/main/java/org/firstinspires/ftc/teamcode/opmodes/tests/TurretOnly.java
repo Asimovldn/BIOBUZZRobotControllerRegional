@@ -4,7 +4,7 @@ import com.pedropathing.ivy.Scheduler;
 
 import org.firstinspires.ftc.teamcode.Context;
 import org.firstinspires.ftc.teamcode.RobotOpMode;
-import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import org.firstinspires.ftc.teamcode.systems.hardware.TurretOLD;
 
 import java.util.Arrays;
 
@@ -20,7 +20,7 @@ public class TurretOnly extends RobotOpMode {
     @Override
     public void setup() {
         Scheduler.reset();
-        getTurret().setMode(Turret.Mode.SEMI_AIM);
+        getTurret().setMode(TurretOLD.Mode.SEMI_AIM);
         getTurret().reset();
     }
 

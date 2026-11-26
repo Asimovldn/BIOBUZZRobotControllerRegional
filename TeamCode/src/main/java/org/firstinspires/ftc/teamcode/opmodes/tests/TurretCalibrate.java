@@ -4,7 +4,7 @@ import com.pedropathing.ivy.Scheduler;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.RobotOpMode;
-import org.firstinspires.ftc.teamcode.systems.hardware.Turret;
+import org.firstinspires.ftc.teamcode.systems.hardware.TurretOLD;
 
 @TeleOp(name = "Turret Calibrate", group = "Test")
 public class TurretCalibrate extends RobotOpMode {
@@ -13,7 +13,7 @@ public class TurretCalibrate extends RobotOpMode {
     @Override
     public void setup() {
         Scheduler.reset();
-        getTurret().setMode(Turret.Mode.TUNE_POSITION);
+        getTurret().setMode(TurretOLD.Mode.TUNE_POSITION);
     }
 
     @Override
@@ -35,8 +35,8 @@ public class TurretCalibrate extends RobotOpMode {
         telemetry.addData("Model angle", getTurret().getAngle());
         telemetry.addData("Servo pos", pos);
         telemetry.addData("Pulse (us)", 500 + pos * 2000);
-        telemetry.addData("turretPerServo", Turret.Tune.turretPerServo);
-        telemetry.addData("centerTrimDeg", Turret.Tune.centerTrimDeg);
+        telemetry.addData("turretPerServo", TurretOLD.Tune.turretPerServo);
+        telemetry.addData("centerTrimDeg", TurretOLD.Tune.centerTrimDeg);
         telemetry.addLine("A=0  B=+60  X=-60  Y=+90  dpad = +-5 / +-1");
         telemetry.addLine("Measure the real angle P at command A: new turretPerServo = old * P / A");
         telemetry.addLine("At command 0 the turret should face forward, else adjust centerTrimDeg");
